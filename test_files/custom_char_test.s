@@ -8,33 +8,49 @@ CHRIN  =    $ffcf
 
     dc.w    stubend
     dc.w    12345
-    dc.b    $9e, "4109", 0
+    dc.b    $9e, "4109", 0 
+
+
 
 stubend
     dc.w    0
 
 start
 
-    lda     #33
+    lda     #32
     ldx     #0
 whitescreen
 
     STA     $1e00,X
     INX     
 
-    cpx     #$FF
+    cpx     #255
     BNE     whitescreen
 
-    lda     #35
+    lda     #01
     ldx     #0
 
-whitescreen2
+    lda     #255
+    STA     $9005 ; POKE 36869 255
+    ;       now we should have our character set at 7168, or 0x1c00
 
-    STA     $1f00,X
-    INX     
+    lda     #$55 ; 01010101
+    ldx     #0
+fillchar ; loop to fill 1c08 - 1c10 with FF
+    STA     $1c08,X
+    INX   
+    cpx     #8
+    BNE     fillchar
 
-    cpx     #$FF
-    BNE     whitescreen2
+    lda     #$AA ; 10101010 
+    ldx     #0
+equalschar ; loop to fill 1c20 - 1c28 with AA
+    STA     $1c20,X
+    INX   
+    cpx     #8
+    BNE     equalschar
+
+
 
 
 loop
@@ -55,7 +71,7 @@ is_a
     jmp     printchar
 is_d
 ;    lda     #68 
-    lda     #02
+    lda     #04
     jmp     printchar
 
 printchar
