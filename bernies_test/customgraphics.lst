@@ -1,0 +1,86 @@
+------- FILE customgraphics.s LEVEL 1 PASS 2
+      1  1060					      processor	6502
+      2  1060 ????
+      3  1060 ????						; KERNAL [sic] routines
+      4  1060 ????	       ff d2	   CHROUT     =	$ffd2
+      5  1060 ????	       ff cf	   CHRIN      =	$ffcf
+      6  1060 ????
+      7  1001					      org	$1001
+      8  1001
+      9  1001		       0b 10		      dc.w	stubend
+     10  1003		       39 30		      dc.w	12345
+     11  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+     12  100b
+     13  100b
+     14  100b
+     15  100b				   stubend
+     16  100b		       00 00		      dc.w	0
+     17  100d
+     18  100d				   start
+     19  100d
+     20  100d		       a9 20		      lda	#32
+     21  100f		       a2 00		      ldx	#0
+     22  1011				   whitescreen
+     23  1011
+     24  1011		       9d 00 1e 	      STA	$1e00,X
+     25  1014		       e8		      INX
+     26  1015
+     27  1015		       e0 ff		      cpx	#255
+     28  1017		       d0 f8		      BNE	whitescreen
+     29  1019
+     30  1019		       a9 01		      lda	#01
+     31  101b		       a2 00		      ldx	#0
+     32  101d
+     33  101d		       a9 ff		      lda	#255
+     34  101f		       8d 05 90 	      STA	$9005	; POKE 36869 255
+     35  1022							;	 now we should have our character set at 7168, or 0x1c00
+     36  1022
+     37  1022		       a9 55		      lda	#$55	; 01010101
+     38  1024		       a2 00		      ldx	#0
+     39  1026				   fillchar		; loop to fill 1c08 - 1c10 with FF
+     40  1026		       9d 08 1c 	      STA	$1c08,X
+     41  1029		       e8		      INX
+     42  102a		       e0 08		      cpx	#8
+     43  102c		       d0 f8		      BNE	fillchar
+     44  102e
+     45  102e		       a9 aa		      lda	#$AA	; 10101010
+     46  1030		       a2 00		      ldx	#0
+     47  1032				   equalschar		; loop to fill 1c20 - 1c28 with AA
+     48  1032		       9d 20 1c 	      STA	$1c20,X
+     49  1035		       e8		      INX
+     50  1036		       e0 08		      cpx	#8
+     51  1038		       d0 f8		      BNE	equalschar
+     52  103a
+     53  103a
+     54  103a
+     55  103a
+     56  103a				   loop
+     57  103a		       a5 c5		      lda	$00C5
+     58  103c		       c9 40		      cmp	#64
+     59  103e		       f0 fa		      beq	loop
+     60  1040		       c9 11		      cmp	#17
+     61  1042		       f0 0b		      beq	is_a
+     62  1044		       c9 12		      cmp	#18
+     63  1046		       f0 0c		      beq	is_d
+     64  1048		       c9 21		      cmp	#33
+     65  104a		       f0 13		      beq	exit_prg
+     66  104c		       4c 3a 10 	      jmp	loop
+     67  104f
+     68  104f				   is_a
+     69  104f							;    lda     #65
+     70  104f		       a9 01		      lda	#01
+     71  1051		       4c 59 10 	      jmp	printchar
+     72  1054				   is_d
+     73  1054							;    lda     #68
+     74  1054		       a9 04		      lda	#04
+     75  1056		       4c 59 10 	      jmp	printchar
+     76  1059
+     77  1059				   printchar
+     78  1059							;    jsr     CHROUT
+     79  1059		       8d 00 1e 	      STA	$1e00
+     80  105c		       4c 3a 10 	      jmp	loop
+     81  105f
+     82  105f
+     83  105f				   exit_prg
+     84  105f		       60		      rts
+     85  1060
