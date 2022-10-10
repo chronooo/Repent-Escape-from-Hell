@@ -20,14 +20,22 @@ start
     lda     #32
     ldx     #0
 whitescreen
-
     STA     $1e00,X
     INX     
 
     cpx     #255
     BNE     whitescreen
 
-    lda     #01
+    lda     #$00
+    ldx     #0
+whitescreen2
+    STA     $1f00,X
+    INX     
+
+    cpx     #255
+    BNE     whitescreen2
+
+    lda     #$00
     ldx     #0
 
     lda     #255
@@ -50,8 +58,25 @@ equalschar ; loop to fill 1c20 - 1c28 with AA
     cpx     #8
     BNE     equalschar
 
+    lda     #$00 
+    ldx     #0
+colorRamFill ; fill color ram 0x9600 to 0x96ff with black (00)
+    STA     $9600,X
+    INX
+    cpx     #255
+    BNE     colorRamFill
+    STA     $9600,X
+    lda     #$00
+    ldx     #0
 
-
+colorRamFill2 ; fill color ram 0x9700 to 0x97ff with black (00)
+    STA     $9700,X
+    INX
+    cpx     #255
+    BNE     colorRamFill2
+    STA     $9700,X
+    lda     #$00
+    ldx     #0
 
 loop
     lda     $00C5
