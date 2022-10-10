@@ -99,10 +99,32 @@ is_d                        ; if d was pressed, decrease frame
     ;jmp     printchar
 
 printchar
-    STX     $1e08           ; character set offset in X, into screen memory location (arbitary)
+                            ; character set offset in X, into screen memory location (arbitary)
                             ; first byte of screen memory
                             ; $1e00 is first byte of screen memory
-    sty     $0
+    TXA
+
+    ldy     #0
+fill_screen
+    STA     $1e00,Y
+    INY     
+    cpy     #$FF
+    BNE     fill_screen
+    STA     $1e00,Y
+
+    ldy     #0
+fill_screen1
+    STA     $1f00,Y
+    INY     
+    cpy     #$FF
+    BNE     fill_screen1
+    STA     $1f00,Y
+
+    ;STX     $1e00
+
+
+
+    ldy     $0
 waste_time_loop
     INY
     CPY     $FF             ; waste time by counting up to 255 in Y reg

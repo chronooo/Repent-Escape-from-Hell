@@ -100,106 +100,128 @@
      99  107a							;jmp	  printchar
     100  107a
     101  107a				   printchar
-    102  107a		       8e 08 1e 	      STX	$1e08	; character set offset in X, into screen memory location (arbitary)
-    103  107d							; first byte of screen memory
-    104  107d							; $1e00 is first byte of screen memory
-    105  107d		       84 00		      sty	$0
-    106  107f				   waste_time_loop
-    107  107f		       c8		      INY
-    108  1080		       c4 ff		      CPY	$FF	; waste time by counting up to 255 in Y reg
-    109  1082		       d0 fb		      BNE	waste_time_loop
-    110  1084
-    111  1084		       4c 50 10 	      jmp	loop	; go to top of while loop
-    112  1087
-    113  1087
-    114  1087							;/*
-    115  1087							;------------------
-    116  1087							;CHARACTER SET DATA:
-    117  1087							;------------------
-    118  1087							;*/
-    119  1c00					      org	$1c00
-    120  1c00
-    121  1c00							;	 CHAR 00	 ; all empty
-    122  1c00		       00 00 00 00*	      ds	8, $00	; declares 8 bytes of value 0x00
-    123  1c08							;	 CHAR 01	 ; all filled
-    124  1c08		       ff ff ff ff*	      ds	8, $FF	; declares 8 bytes of value 0xFF
-    125  1c10
-    126  1c10							;	 CHAR 02
-    127  1c10		       00		      dc.b	%00000000
-    128  1c11		       00		      dc.b	%00000000
-    129  1c12		       3c		      dc.b	%00111100
-    130  1c13		       3c		      dc.b	%00111100
-    131  1c14		       3c		      dc.b	%00111100
-    132  1c15		       3c		      dc.b	%00111100
-    133  1c16		       00		      dc.b	%00000000
-    134  1c17		       00		      dc.b	%00000000
-    135  1c18
-    136  1c18							;	 CHAR 03
-    137  1c18		       00		      dc.b	%00000000
-    138  1c19		       00		      dc.b	%00000000
-    139  1c1a		       78		      dc.b	%01111000
-    140  1c1b		       78		      dc.b	%01111000
-    141  1c1c		       78		      dc.b	%01111000
-    142  1c1d		       78		      dc.b	%01111000
-    143  1c1e		       00		      dc.b	%00000000
-    144  1c1f		       00		      dc.b	%00000000
-    145  1c20
-    146  1c20							;	 CHAR 04
-    147  1c20		       00		      dc.b	%00000000
-    148  1c21		       00		      dc.b	%00000000
-    149  1c22		       f0		      dc.b	%11110000
-    150  1c23		       f0		      dc.b	%11110000
-    151  1c24		       f0		      dc.b	%11110000
-    152  1c25		       f0		      dc.b	%11110000
-    153  1c26		       00		      dc.b	%00000000
-    154  1c27		       00		      dc.b	%00000000
-    155  1c28
-    156  1c28							;	 CHAR 05
-    157  1c28		       00		      dc.b	%00000000
-    158  1c29		       00		      dc.b	%00000000
-    159  1c2a		       e1		      dc.b	%11100001
-    160  1c2b		       e1		      dc.b	%11100001
-    161  1c2c		       e1		      dc.b	%11100001
-    162  1c2d		       e1		      dc.b	%11100001
-    163  1c2e		       00		      dc.b	%00000000
-    164  1c2f		       00		      dc.b	%00000000
-    165  1c30
-    166  1c30							;	 CHAR 06
-    167  1c30		       00		      dc.b	%00000000
-    168  1c31		       00		      dc.b	%00000000
-    169  1c32		       c3		      dc.b	%11000011
-    170  1c33		       c3		      dc.b	%11000011
-    171  1c34		       c3		      dc.b	%11000011
-    172  1c35		       c3		      dc.b	%11000011
-    173  1c36		       00		      dc.b	%00000000
-    174  1c37		       00		      dc.b	%00000000
-    175  1c38
-    176  1c38							;	 CHAR 07
-    177  1c38		       00		      dc.b	%00000000
-    178  1c39		       00		      dc.b	%00000000
-    179  1c3a		       87		      dc.b	%10000111
-    180  1c3b		       87		      dc.b	%10000111
-    181  1c3c		       87		      dc.b	%10000111
-    182  1c3d		       87		      dc.b	%10000111
-    183  1c3e		       00		      dc.b	%00000000
-    184  1c3f		       00		      dc.b	%00000000
-    185  1c40
-    186  1c40							;	 CHAR 08
-    187  1c40		       00		      dc.b	%00000000
-    188  1c41		       00		      dc.b	%00000000
-    189  1c42		       0f		      dc.b	%00001111
-    190  1c43		       0f		      dc.b	%00001111
-    191  1c44		       0f		      dc.b	%00001111
-    192  1c45		       0f		      dc.b	%00001111
-    193  1c46		       00		      dc.b	%00000000
-    194  1c47		       00		      dc.b	%00000000
-    195  1c48
-    196  1c48							;	 CHAR 09
-    197  1c48		       00		      dc.b	%00000000
-    198  1c49		       00		      dc.b	%00000000
-    199  1c4a		       1e		      dc.b	%00011110
-    200  1c4b		       1e		      dc.b	%00011110
-    201  1c4c		       1e		      dc.b	%00011110
-    202  1c4d		       1e		      dc.b	%00011110
-    203  1c4e		       00		      dc.b	%00000000
-    204  1c4f		       00		      dc.b	%00000000
+    102  107a							; character set offset in X, into screen memory location (arbitary)
+    103  107a							; first byte of screen memory
+    104  107a							; $1e00 is first byte of screen memory
+    105  107a		       8a		      TXA
+    106  107b
+    107  107b		       a0 00		      ldy	#0
+    108  107d				   fill_screen
+    109  107d		       99 00 1e 	      STA	$1e00,Y
+    110  1080		       c8		      INY
+    111  1081		       c0 ff		      cpy	#$FF
+    112  1083		       d0 f8		      BNE	fill_screen
+    113  1085		       99 00 1e 	      STA	$1e00,Y
+    114  1088
+    115  1088		       a0 00		      ldy	#0
+    116  108a				   fill_screen1
+    117  108a		       99 00 1f 	      STA	$1f00,Y
+    118  108d		       c8		      INY
+    119  108e		       c0 ff		      cpy	#$FF
+    120  1090		       d0 f8		      BNE	fill_screen1
+    121  1092		       99 00 1f 	      STA	$1f00,Y
+    122  1095
+    123  1095							;STX	  $1e00
+    124  1095
+    125  1095
+    126  1095
+    127  1095		       a4 00		      ldy	$0
+    128  1097				   waste_time_loop
+    129  1097		       c8		      INY
+    130  1098		       c4 ff		      CPY	$FF	; waste time by counting up to 255 in Y reg
+    131  109a		       d0 fb		      BNE	waste_time_loop
+    132  109c
+    133  109c		       4c 50 10 	      jmp	loop	; go to top of while loop
+    134  109f
+    135  109f
+    136  109f							;/*
+    137  109f							;------------------
+    138  109f							;CHARACTER SET DATA:
+    139  109f							;------------------
+    140  109f							;*/
+    141  1c00					      org	$1c00
+    142  1c00
+    143  1c00							;	 CHAR 00	 ; all empty
+    144  1c00		       00 00 00 00*	      ds	8, $00	; declares 8 bytes of value 0x00
+    145  1c08							;	 CHAR 01	 ; all filled
+    146  1c08		       ff ff ff ff*	      ds	8, $FF	; declares 8 bytes of value 0xFF
+    147  1c10
+    148  1c10							;	 CHAR 02
+    149  1c10		       00		      dc.b	%00000000
+    150  1c11		       00		      dc.b	%00000000
+    151  1c12		       3c		      dc.b	%00111100
+    152  1c13		       3c		      dc.b	%00111100
+    153  1c14		       3c		      dc.b	%00111100
+    154  1c15		       3c		      dc.b	%00111100
+    155  1c16		       00		      dc.b	%00000000
+    156  1c17		       00		      dc.b	%00000000
+    157  1c18
+    158  1c18							;	 CHAR 03
+    159  1c18		       00		      dc.b	%00000000
+    160  1c19		       00		      dc.b	%00000000
+    161  1c1a		       78		      dc.b	%01111000
+    162  1c1b		       78		      dc.b	%01111000
+    163  1c1c		       78		      dc.b	%01111000
+    164  1c1d		       78		      dc.b	%01111000
+    165  1c1e		       00		      dc.b	%00000000
+    166  1c1f		       00		      dc.b	%00000000
+    167  1c20
+    168  1c20							;	 CHAR 04
+    169  1c20		       00		      dc.b	%00000000
+    170  1c21		       00		      dc.b	%00000000
+    171  1c22		       f0		      dc.b	%11110000
+    172  1c23		       f0		      dc.b	%11110000
+    173  1c24		       f0		      dc.b	%11110000
+    174  1c25		       f0		      dc.b	%11110000
+    175  1c26		       00		      dc.b	%00000000
+    176  1c27		       00		      dc.b	%00000000
+    177  1c28
+    178  1c28							;	 CHAR 05
+    179  1c28		       00		      dc.b	%00000000
+    180  1c29		       00		      dc.b	%00000000
+    181  1c2a		       e1		      dc.b	%11100001
+    182  1c2b		       e1		      dc.b	%11100001
+    183  1c2c		       e1		      dc.b	%11100001
+    184  1c2d		       e1		      dc.b	%11100001
+    185  1c2e		       00		      dc.b	%00000000
+    186  1c2f		       00		      dc.b	%00000000
+    187  1c30
+    188  1c30							;	 CHAR 06
+    189  1c30		       00		      dc.b	%00000000
+    190  1c31		       00		      dc.b	%00000000
+    191  1c32		       c3		      dc.b	%11000011
+    192  1c33		       c3		      dc.b	%11000011
+    193  1c34		       c3		      dc.b	%11000011
+    194  1c35		       c3		      dc.b	%11000011
+    195  1c36		       00		      dc.b	%00000000
+    196  1c37		       00		      dc.b	%00000000
+    197  1c38
+    198  1c38							;	 CHAR 07
+    199  1c38		       00		      dc.b	%00000000
+    200  1c39		       00		      dc.b	%00000000
+    201  1c3a		       87		      dc.b	%10000111
+    202  1c3b		       87		      dc.b	%10000111
+    203  1c3c		       87		      dc.b	%10000111
+    204  1c3d		       87		      dc.b	%10000111
+    205  1c3e		       00		      dc.b	%00000000
+    206  1c3f		       00		      dc.b	%00000000
+    207  1c40
+    208  1c40							;	 CHAR 08
+    209  1c40		       00		      dc.b	%00000000
+    210  1c41		       00		      dc.b	%00000000
+    211  1c42		       0f		      dc.b	%00001111
+    212  1c43		       0f		      dc.b	%00001111
+    213  1c44		       0f		      dc.b	%00001111
+    214  1c45		       0f		      dc.b	%00001111
+    215  1c46		       00		      dc.b	%00000000
+    216  1c47		       00		      dc.b	%00000000
+    217  1c48
+    218  1c48							;	 CHAR 09
+    219  1c48		       00		      dc.b	%00000000
+    220  1c49		       00		      dc.b	%00000000
+    221  1c4a		       1e		      dc.b	%00011110
+    222  1c4b		       1e		      dc.b	%00011110
+    223  1c4c		       1e		      dc.b	%00011110
+    224  1c4d		       1e		      dc.b	%00011110
+    225  1c4e		       00		      dc.b	%00000000
+    226  1c4f		       00		      dc.b	%00000000
