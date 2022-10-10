@@ -1,86 +1,111 @@
 ------- FILE custom_char_test.s LEVEL 1 PASS 2
-      1  1060					      processor	6502
-      2  1060 ????
-      3  1060 ????						; KERNAL [sic] routines
-      4  1060 ????	       ff d2	   CHROUT     =	$ffd2
-      5  1060 ????	       ff cf	   CHRIN      =	$ffcf
-      6  1060 ????
-      7  1001					      org	$1001
-      8  1001
+      1  1c0f					      processor	6502
+      2  1c10 ????
+      3  1c10 ????						;   KERNAL [sic] routines
+      4  1c10 ????
+      5  1c10 ????	       ff d2	   CHROUT     =	$ffd2
+      6  1c10 ????	       ff cf	   CHRIN      =	$ffcf
+      7  1c10 ????
+      8  1001					      org	$1001
       9  1001		       0b 10		      dc.w	stubend
      10  1003		       39 30		      dc.w	12345
      11  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
-     12  100b
-     13  100b
-     14  100b
-     15  100b				   stubend
-     16  100b		       00 00		      dc.w	0
-     17  100d
-     18  100d				   start
-     19  100d
-     20  100d		       a9 20		      lda	#32
-     21  100f		       a2 00		      ldx	#0
-     22  1011				   whitescreen
-     23  1011
-     24  1011		       9d 00 1e 	      STA	$1e00,X
-     25  1014		       e8		      INX
-     26  1015
-     27  1015		       e0 ff		      cpx	#255
-     28  1017		       d0 f8		      BNE	whitescreen
-     29  1019
-     30  1019		       a9 01		      lda	#01
-     31  101b		       a2 00		      ldx	#0
-     32  101d
-     33  101d		       a9 ff		      lda	#255
-     34  101f		       8d 05 90 	      STA	$9005	; POKE 36869 255
-     35  1022							;	 now we should have our character set at 7168, or 0x1c00
-     36  1022
-     37  1022		       a9 55		      lda	#$55	; 01010101
-     38  1024		       a2 00		      ldx	#0
-     39  1026				   fillchar		; loop to fill 1c08 - 1c10 with FF
-     40  1026		       9d 08 1c 	      STA	$1c08,X
-     41  1029		       e8		      INX
-     42  102a		       e0 08		      cpx	#8
-     43  102c		       d0 f8		      BNE	fillchar
-     44  102e
-     45  102e		       a9 aa		      lda	#$AA	; 10101010
-     46  1030		       a2 00		      ldx	#0
-     47  1032				   equalschar		; loop to fill 1c20 - 1c28 with AA
-     48  1032		       9d 20 1c 	      STA	$1c20,X
-     49  1035		       e8		      INX
-     50  1036		       e0 08		      cpx	#8
-     51  1038		       d0 f8		      BNE	equalschar
-     52  103a
-     53  103a
-     54  103a
-     55  103a
-     56  103a				   loop
-     57  103a		       a5 c5		      lda	$00C5
-     58  103c		       c9 40		      cmp	#64
-     59  103e		       f0 fa		      beq	loop
-     60  1040		       c9 11		      cmp	#17
-     61  1042		       f0 0b		      beq	is_a
-     62  1044		       c9 12		      cmp	#18
-     63  1046		       f0 0c		      beq	is_d
-     64  1048		       c9 21		      cmp	#33
-     65  104a		       f0 13		      beq	exit_prg
-     66  104c		       4c 3a 10 	      jmp	loop
-     67  104f
-     68  104f				   is_a
-     69  104f							;    lda     #65
-     70  104f		       a9 01		      lda	#01
-     71  1051		       4c 59 10 	      jmp	printchar
-     72  1054				   is_d
-     73  1054							;    lda     #68
-     74  1054		       a9 04		      lda	#04
-     75  1056		       4c 59 10 	      jmp	printchar
-     76  1059
-     77  1059				   printchar
-     78  1059							;    jsr     CHROUT
-     79  1059		       8d 00 1e 	      STA	$1e00
-     80  105c		       4c 3a 10 	      jmp	loop
-     81  105f
-     82  105f
-     83  105f				   exit_prg
-     84  105f		       60		      rts
-     85  1060
+     12  100b				   stubend
+     13  100b		       00 00		      dc.w	0
+     14  100d
+     15  100d				   start
+     16  100d
+     17  100d		       a9 00		      lda	#00
+     18  100f		       a2 00		      ldx	#0
+     19  1011				   whitescreen
+     20  1011		       9d 00 1e 	      STA	$1e00,X
+     21  1014		       e8		      INX
+     22  1015		       e0 ff		      cpx	#$FF
+     23  1017		       d0 f8		      BNE	whitescreen
+     24  1019		       9d 00 1e 	      STA	$1e00,X
+     25  101c
+     26  101c		       a9 01		      lda	#01
+     27  101e		       a2 00		      ldx	#0
+     28  1020				   whitescreen2
+     29  1020		       9d 00 1f 	      STA	$1f00,X
+     30  1023		       e8		      INX
+     31  1024		       e0 ff		      cpx	#$FF
+     32  1026		       d0 f8		      BNE	whitescreen2
+     33  1028		       9d 00 1f 	      STA	$1f00,X
+     34  102b
+     35  102b							;   Switching character set pointer to 0x1c00:
+     36  102b		       a9 ff		      lda	#255
+     37  102d		       8d 05 90 	      STA	$9005	; POKE 36869 255 (from book)
+     38  1030
+     39  1030							;   Next, fill 0x9600 - 0x9700 (color RAM) with $00
+     40  1030
+     41  1030							;   loop to fill 0x9600 - 0x96FF with FF:
+     42  1030		       a9 00		      lda	#$00
+     43  1032		       a2 00		      ldx	#$00
+     44  1034				   color_ram
+     45  1034		       9d 00 96 	      STA	$9600,X
+     46  1037		       e8		      INX
+     47  1038		       e0 ff		      cpx	#255
+     48  103a		       d0 f8		      BNE	color_ram
+     49  103c		       9d 00 96 	      STA	$9600,X
+     50  103f
+     51  103f							;   loop to fill 0x9700 - 0x97FF with FF:
+     52  103f		       a9 00		      lda	#$00
+     53  1041		       a2 00		      ldx	#0
+     54  1043				   color_ram1
+     55  1043		       9d 00 97 	      STA	$9700,X
+     56  1046		       e8		      INX
+     57  1047		       e0 ff		      cpx	#255
+     58  1049		       d0 f8		      BNE	color_ram1
+     59  104b		       9d 00 97 	      STA	$9700,X
+     60  104e
+     61  104e							;   Now, all the pixels on the display are enabled
+     62  104e
+     63  104e				   loop
+     64  104e		       a5 c5		      lda	$00C5	; loads the current pressed key from memory
+     65  1050		       c9 40		      cmp	#64
+     66  1052		       f0 fa		      beq	loop
+     67  1054		       c9 11		      cmp	#17
+     68  1056		       f0 0c		      beq	is_a	; if D is pressed
+     69  1058		       c9 12		      cmp	#18
+     70  105a		       f0 0d		      beq	is_d	; if D is pressed
+     71  105c		       c9 21		      cmp	#33
+     72  105e		       f0 03		      beq	exit_prg
+     73  1060		       4c 4e 10 	      jmp	loop
+     74  1063
+     75  1063				   exit_prg
+     76  1063		       60		      rts
+     77  1064
+     78  1064				   is_a
+     79  1064		       a9 00		      lda	#00	; prints character at 0x1c00
+     80  1066		       4c 6e 10 	      jmp	printchar
+     81  1069				   is_d
+     82  1069		       a9 01		      lda	#01	; prints character at 0x1c08
+     83  106b		       4c 6e 10 	      jmp	printchar
+     84  106e
+     85  106e				   printchar
+     86  106e		       8d 00 1e 	      STA	$1e00	; stores the character selected to
+     87  1071							; first byte of screen memory
+     88  1071		       4c 4e 10 	      jmp	loop
+     89  1074
+     90  1c00					      org	$1c00
+     91  1c00
+     92  1c00							;	 CHAR 0
+     93  1c00		       ff		      dc.b	%11111111
+     94  1c01		       ff		      dc.b	%11111111
+     95  1c02		       c3		      dc.b	%11000011
+     96  1c03		       c3		      dc.b	%11000011
+     97  1c04		       c3		      dc.b	%11000011
+     98  1c05		       c3		      dc.b	%11000011
+     99  1c06		       ff		      dc.b	%11111111
+    100  1c07		       ff		      dc.b	%11111111
+    101  1c08
+    102  1c08							;	 CHAR 1
+    103  1c08		       00		      dc.b	%00000000
+    104  1c09		       00		      dc.b	%00000000
+    105  1c0a		       3c		      dc.b	%00111100
+    106  1c0b		       3c		      dc.b	%00111100
+    107  1c0c		       3c		      dc.b	%00111100
+    108  1c0d		       3c		      dc.b	%00111100
+    109  1c0e		       00		      dc.b	%00000000
+    110  1c0f		       00		      dc.b	%00000000
