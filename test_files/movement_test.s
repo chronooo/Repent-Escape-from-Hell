@@ -41,7 +41,9 @@ main_loop
     ldy     #$0
     sta     ($02),y
     sta     ($04),y
-
+    ldy     #$16
+    sta     ($02),y
+    sta     ($04),y
     ;jmp     s_down       ;test purpose
     lda     $00C5           ; loads the current pressed key from memory
 
@@ -85,7 +87,7 @@ w_top
     jmp     main_update_shift_end
 s_down
     ;check if y>21 => 21<y (22 is maximum)
-    lda     #21
+    lda     #20
     cmp     $22
     bcc     case_idle ;too bottom
     inc     $22
@@ -95,8 +97,15 @@ main_update_shift_end
     ldy     #$0
     lda     #01 ;a squre
     sta     ($02),y
+    ldy     #$16
+    sta     ($02),y
+
     lda     #02 ;color red
+    ldy     #$0
     sta     ($04),y
+    ldy     #$16
+    sta     ($04),y
+
     jsr     interval_start
     jmp     main_loop
 exit_prg
