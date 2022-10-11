@@ -66,7 +66,7 @@
      65  1050		       c9 40		      cmp	#64
      66  1052		       f0 fa		      beq	loop
      67  1054		       c9 11		      cmp	#17
-     68  1056		       f0 0c		      beq	is_a	; if D is pressed
+     68  1056		       f0 0c		      beq	is_a	; if A is pressed
      69  1058		       c9 12		      cmp	#18
      70  105a		       f0 0d		      beq	is_d	; if D is pressed
      71  105c		       c9 21		      cmp	#33
