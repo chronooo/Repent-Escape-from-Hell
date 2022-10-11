@@ -37,8 +37,8 @@ main
 
 main_loop
     jsr     shift_on_monitor
-    lda     #0
-    ldy     #0
+    lda     #$0
+    ldy     #$0
     sta     ($02),y
     sta     ($04),y
 
@@ -92,19 +92,12 @@ s_down
     jmp     main_update_shift_end
 main_update_shift_end
     jsr     shift_on_monitor
-    ldy     0
+    ldy     #$0
     lda     #01 ;a squre
     sta     ($02),y
     lda     #02 ;color red
     sta     ($04),y
     jsr     interval_start
-temp_debug_flag
-    jsr     shift_on_monitor
-    lda     #0
-    ldy     #0
-    sta     ($02),y
-    sta     ($04),y
-    jmp     temp_debug_flag
     jmp     main_loop
 exit_prg
     rts
@@ -190,7 +183,7 @@ interval_start
     sta $11
 interval_loop
     lda $11
-    cmp #$2f
+    cmp #$0a
     beq interval_done
     inc $11
     jsr delay255_start
