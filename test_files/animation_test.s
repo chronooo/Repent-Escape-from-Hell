@@ -1,4 +1,4 @@
-processor 6502
+    processor 6502
 
 ;   KERNAL [sic] routines
 IDLE_TOP_1 = "12345"
@@ -14,9 +14,6 @@ RIGHT_TOP_2 = "12345"
     ; right frame 1/2: 4/5
 ;   21: x movement
 ;   22: y movement
-CHROUT =    $ffd2
-CHRIN  =    $ffcf
-
     org     $1001
     dc.w    stubend
     dc.w    12345
@@ -25,121 +22,103 @@ stubend
     dc.w    0
 
 main
+    jsr     store_char
     jsr     clear_screen
 
     ;charcterset to from 1c00
     lda     #255
     sta     $9005
 
-    ;store spirit basic status
-    lda     #$00
-    sta     #$20
-
     ;start location
-    lda     #$28
-    sta     #$21
-    lda     #$1f
-    sta     #$22
+    lda     #1
+    sta     $21
+    lda     #1
+    sta     $22
 
 main_loop
+    jsr     shift_on_monitor
+    lda     #0
+    ldy     #0
+    sta     ($02),y
+    sta     ($04),y
+
+    ;jmp     s_down       ;test purpose
     lda     $00C5           ; loads the current pressed key from memory
-    cmp     #64
-    beq     idle
-    cmp     #17
-    beq     a_left            ; if A is pressed
-    cmp     #18
-    beq     d_right            ; if D is pressed
-    cmp     #33                 ;
+
+    cmp     #64 ;if nothing held down
+    beq     case_idle
+    cmp     #17 ; if A is pressed
+    beq     a_left
+    cmp     #18 ; if D is pressed
+    beq     d_right
+    cmp     #9  ;if W is pressed
+    beq     w_top
+    cmp     #41 ;if S is pressed
+    beq     s_down
+    cmp     #33
     beq     exit_prg
-
-main_erase_current
-    jsr shift_on_monitor
-    lda     $00
-    sta     $03
-    lda     $04
-    sta     $05
-    ;calculate the current position of char
-    clc
-    lda     #$00
-    adc     $20
-    sta     $00
-    lda     #$1e
-    adc     $21
-    sta     $01
-
-    ;erase_char
-    lda     #0
-    sta     $0100
-
-    lda     #$00
-    adc     $20
-    sta     $00
-    lda     #$96
-    adc     $21
-    sta     $01
-
-    ;set_color_to white
-    lda     #0
-    sta     $0100
-
-
 main_update_shift
     lda     $20
 case_idle
-    cmp     #02
-    bcs     case_left ;00,01 idle
+    ;coordinate not updated
     jmp     main_update_shift_end
-case_left
-    cmp    #04
-    bcs    #case_right ;02,03 left
-
-
-
-case_right
-
-
+a_left
+    ;check if x<1
+    lda     $21
+    cmp     #1
+    bcc     case_idle ;tooleft,cannotmove
+    dec     $21
+    jmp     main_update_shift_end
+d_right
+     ;check if x> 20 => 20< X (21 is maximum)
+    lda     #20
+    cmp     $21
+    bcc     case_idle ;too right
+    inc     $21
+    jmp     main_update_shift_end
+w_top
+    ;check y <1
+    lda     $22
+    cmp     #1
+    bcc     case_idle ;too top
+    dec     $22
+    jmp     main_update_shift_end
+s_down
+    ;check if y>21 => 21<y (22 is maximum)
+    lda     #21
+    cmp     $22
+    bcc     case_idle ;too bottom
+    inc     $22
+    jmp     main_update_shift_end
 main_update_shift_end
+    jsr     shift_on_monitor
+    ldy     0
+    lda     #01 ;a squre
+    sta     ($02),y
+    lda     #02 ;color red
+    sta     ($04),y
+    jsr     interval_start
+temp_debug_flag
+    jsr     shift_on_monitor
+    lda     #0
+    ldy     #0
+    sta     ($02),y
+    sta     ($04),y
+    jmp     temp_debug_flag
     jmp     main_loop
-
-
-idle
-    jmp update_position_main
-
-erase_current
-    lda     #0
-
-    ;calculate the current position of char
-    clc
-    lda     #$00
-    adc     $20
-    sta     $00
-    lda     #$1e
-    adc     $21
-    sta     $01
-
-    ;erase_char
-    lda     #0
-    sta     $0100
-
-    lda     #$00
-    adc     $20
-    sta     $00
-    lda     #$96
-    adc     $21
-    sta     $01
-
-    ;set_color_to white
-    lda     #0
-    sta     $0100
+exit_prg
     rts
 
-;take take y@[21],x@[20],store to [01][00] as shift,
+
+
+
+;take take y@[22],x@[21],store to [01][00] as shift,
 ;[03][02] as character movment, [05][04]as screen color movment
 shift_on_monitor
-    lda $20
-    sta $03
     lda $21
-    sta $04
+    sta $03 ;->xto[3]
+    lda $22
+    sta $04; -> y to [4]
     lda #$00
     sta $01
     sta $00
@@ -152,9 +131,11 @@ som_y
     lda #22
     adc $0
     sta $0
+
     lda $01
     adc #$0
     sta $01
+
     dec $04
     jmp som_y
 som_x
@@ -203,4 +184,50 @@ white_color
     rts
 ;function:clear screen end
 
+;loopoverdelay255
+interval_start
+    lda #$0
+    sta $11
+interval_loop
+    lda $11
+    cmp #$2f
+    beq interval_done
+    inc $11
+    jsr delay255_start
+    jmp interval_loop
+interval_done
+    rts
 
+;delay loop
+delay255_start
+    lda #$0
+    sta $01
+delay255_loop
+    lda $01
+    cmp #$FF
+    beq delay255_done
+    inc $01
+    jmp delay255_loop
+delay255_done
+    rts
+
+    ;include "shift_on_monitor.s"
+    ;include "tempChars.s"
+store_char
+    ldx     #$0
+    lda     #$0
+char1
+    cpx     #8
+    beq     char2
+    sta     $1c00,x
+    inx
+    jmp     char1
+char2
+    lda     #$ff
+    cpx     #16
+    beq     store_char_end
+    sta     $1c00,x
+    inx
+    jmp     char2
+store_char_end
+    rts
