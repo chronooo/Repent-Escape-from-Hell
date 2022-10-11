@@ -1,6 +1,6 @@
 DASM	=  C:\run\dasm.exe
 %.prg:
-						($DASM) $< -o$@ -l$*.lst
+						$(DASM) $< -o$@ -l$*.lst
 
 all:					shift_on_monitor.prg
 

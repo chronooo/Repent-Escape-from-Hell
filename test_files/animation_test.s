@@ -51,8 +51,13 @@ main_loop
     beq     d_right            ; if D is pressed
     cmp     #33                 ;
     beq     exit_prg
+
 main_erase_current
-    lda     #0
+    jsr shift_on_monitor
+    lda     $00
+    sta     $03
+    lda     $04
+    sta     $05
     ;calculate the current position of char
     clc
     lda     #$00
@@ -128,8 +133,9 @@ erase_current
     sta     $0100
     rts
 
-;take take y@[21],x@[20],store to [01][00]
-shift_to_monitor
+;take take y@[21],x@[20],store to [01][00] as shift,
+;[03][02] as character movment, [05][04]as screen color movment
+shift_on_monitor
     lda $20
     sta $03
     lda $21
@@ -137,22 +143,21 @@ shift_to_monitor
     lda #$00
     sta $01
     sta $00
-
-stm_loop
-stm_y
+som_loop
+som_y
     lda $04
     cmp #$0
-    b.eq stm_x
+    beq som_x
     clc
-    lda #$22
+    lda #22
     adc $0
     sta $0
     lda $01
     adc #$0
     sta $01
     dec $04
-    jmp stm_y
-stm_x
+    jmp som_y
+som_x
     clc
     lda $03
     adc $0
@@ -160,8 +165,22 @@ stm_x
     lda $01
     adc #$0
     sta $01
-    rts
-exit_prg
+
+;calculate movement of characters
+;not out of border is assumend
+    ;last 2 digit always 0
+    lda $00
+    sta $02
+    sta $04
+    clc
+
+    lda #$1e
+    adc $01
+    sta $03
+
+    lda #$96
+    adc $01
+    sta $05
     rts
 
 ;function:clear screen
@@ -183,127 +202,5 @@ white_color
     BNE     white_color
     rts
 ;function:clear screen end
-
-    org     $1c08
-    ;#0top half of idle frame 1
-    dc.b    %01111110
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-
-    ;#1bottom half of idle frame 1
-    dc.b    %00011000
-    dc.b    %00111000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %01111110
-
-    ;#2top half of idle frame 2
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %01111110
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00011110
-    ;#3bottom half of idle frame 2
-    dc.b    %00111000
-    dc.b    %01000100
-    dc.b    %00000100
-    dc.b    %00000100
-    dc.b    %00001000
-    dc.b    %00010000
-    dc.b    %00100000
-    dc.b    %01111100
-
-    ;#4top half of left frame 1
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00111110
-    ;#5bottom half of left frame 1
-    dc.b    %00011000
-    dc.b    %00111000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %01111110
-
-    ;#6top half of left frame 1
-    dc.b    %01110000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00010000
-    dc.b    %00011100
-    ;#7bottom half of left frame 2
-    dc.b    %00111000
-    dc.b    %01000100
-    dc.b    %00000100
-    dc.b    %00000100
-    dc.b    %00001000
-    dc.b    %00010000
-    dc.b    %00100000
-    dc.b    %01111100
-
-    ;#8top hlaf of right frame 1
-    dc.b    %01111100
-    dc.b    %01000100
-    dc.b    %01000110
-    dc.b    %01000100
-    dc.b    %01111000
-    dc.b    %01001000
-    dc.b    %01000100
-    dc.b    %01000110
-
-    ;#9bottom half of right  frame 1
-    dc.b    %00011000
-    dc.b    %00111000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %00011000
-    dc.b    %01111110
-
-    ;#10top hlaf of right frame 2
-    dc.b    %00000100
-    dc.b    %00111100
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00100000
-    dc.b    %00000000
-
-    ;#11bottom half of right frame 2
-    dc.b    %00111000
-    dc.b    %01000100
-    dc.b    %00000100
-    dc.b    %00000100
-    dc.b    %00001000
-    dc.b    %00010000
-    dc.b    %00100000
-    dc.b    %01111100
-
-    ;#12 just a square
-
-    dc.b #$ffffffffffffffff
 
 

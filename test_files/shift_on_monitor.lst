@@ -1,0 +1,64 @@
+------- FILE shift_on_monitor.s LEVEL 1 PASS 2
+      1  105b					      processor	6502
+      2  105c ????
+      3  105c ????						;take take y@[21],x@[20],store to [01][00] as shift,
+      4  105c ????						;[03][02] as character movment, [05][04]as screen color movment
+      5  1001					      org	$1001
+      6  1001		       0b 10		      dc.w	stubend
+      7  1003		       39 30		      dc.w	12345
+      8  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+      9  100b				   stubend
+     10  100b		       00 00		      dc.w	0
+     11  100d
+     12  100d				   randomdata
+     13  100d		       a9 15		      lda	#21
+     14  100f		       85 20		      sta	$20
+     15  1011		       a9 16		      lda	#22
+     16  1013		       85 21		      sta	$21
+     17  1015				   shift_on_monitor
+     18  1015		       a5 20		      lda	$20
+     19  1017		       85 03		      sta	$03
+     20  1019		       a5 21		      lda	$21
+     21  101b		       85 04		      sta	$04
+     22  101d		       a9 00		      lda	#$00
+     23  101f		       85 01		      sta	$01
+     24  1021		       85 00		      sta	$00
+     25  1023				   som_loop
+     26  1023				   som_y
+     27  1023		       a5 04		      lda	$04
+     28  1025		       c9 00		      cmp	#$0
+     29  1027		       f0 12		      beq	som_x
+     30  1029		       18		      clc
+     31  102a		       a9 16		      lda	#22
+     32  102c		       65 00		      adc	$0
+     33  102e		       85 00		      sta	$0
+     34  1030		       a5 01		      lda	$01
+     35  1032		       69 00		      adc	#$0
+     36  1034		       85 01		      sta	$01
+     37  1036		       c6 04		      dec	$04
+     38  1038		       4c 23 10 	      jmp	som_y
+     39  103b				   som_x
+     40  103b		       18		      clc
+     41  103c		       a5 03		      lda	$03
+     42  103e		       65 00		      adc	$0
+     43  1040		       85 00		      sta	$0
+     44  1042		       a5 01		      lda	$01
+     45  1044		       69 00		      adc	#$0
+     46  1046		       85 01		      sta	$01
+     47  1048
+     48  1048							;calculate movement of characters
+     49  1048							;not out of border is assumend
+     50  1048							;last 2 digit always 0
+     51  1048		       a5 00		      lda	$00
+     52  104a		       85 02		      sta	$02
+     53  104c		       85 04		      sta	$04
+     54  104e		       18		      clc
+     55  104f
+     56  104f		       a9 1e		      lda	#$1e
+     57  1051		       65 01		      adc	$01
+     58  1053		       85 03		      sta	$03
+     59  1055
+     60  1055		       a9 96		      lda	#$96
+     61  1057		       65 01		      adc	$01
+     62  1059		       85 05		      sta	$05
+     63  105b		       60		      rts
