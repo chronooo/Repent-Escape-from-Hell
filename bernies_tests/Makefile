@@ -10,10 +10,14 @@ input:		inputtest.prg
 
 customg:	customgraphics.prg
 
+titlescreen:	titlescreentest.prg
+
 
 clean:
 			rm *.prg *.lst 
 
 inputtest.prg:	inputtest.s
 
-customgraphics.prg: customgraphics.s
+customgraphics.prg:	customgraphics.s
+
+titlescreentest.prg:	titlescreentest.s
