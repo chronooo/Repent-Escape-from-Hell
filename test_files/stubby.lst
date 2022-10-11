@@ -1,19 +1,70 @@
 ------- FILE stubby.s LEVEL 1 PASS 2
-      1  1012					      processor	6502
-      2  1013 ????
-      3  1013 ????						; KERNAL [sic] routines
-      4  1013 ????	       ff d2	   CHROUT     =	$ffd2
-      5  1013 ????
-      6  1001					      org	$1001
-      7  1001
-      8  1001		       0b 10		      dc.w	stubend
-      9  1003		       39 30		      dc.w	12345
-     10  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
-     11  100b
-     12  100b				   stubend
-     13  100b		       00 00		      dc.w	0
-     14  100d
-     15  100d				   start
-     16  100d		       a9 58		      lda	#'X
-     17  100f		       20 d2 ff 	      jsr	CHROUT
-     18  1012		       60		      rts
+      1  104b					      processor	6502
+      2  104b ????
+      3  104b ????						; KERNAL [sic] routines
+      4  104b ????	       ff d2	   CHROUT     =	$ffd2
+      5  104b ????	       ff cf	   CHRIN      =	$ffcf
+      6  104b ????
+      7  1001					      org	$1001
+      8  1001
+      9  1001		       0b 10		      dc.w	stubend
+     10  1003		       39 30		      dc.w	12345
+     11  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+     12  100b
+     13  100b				   stubend
+     14  100b		       00 00		      dc.w	0
+     15  100d
+     16  100d				   start
+     17  100d
+     18  100d		       a9 21		      lda	#33
+     19  100f		       a2 00		      ldx	#0
+     20  1011				   whitescreen
+     21  1011
+     22  1011		       9d 00 1e 	      STA	$1e00,X
+     23  1014		       e8		      INX
+     24  1015
+     25  1015		       e0 ff		      cpx	#$FF
+     26  1017		       d0 f8		      BNE	whitescreen
+     27  1019
+     28  1019		       a9 23		      lda	#35
+     29  101b		       a2 00		      ldx	#0
+     30  101d
+     31  101d				   whitescreen2
+     32  101d
+     33  101d		       9d 00 1f 	      STA	$1f00,X
+     34  1020		       e8		      INX
+     35  1021
+     36  1021		       e0 ff		      cpx	#$FF
+     37  1023		       d0 f8		      BNE	whitescreen2
+     38  1025
+     39  1025
+     40  1025				   loop
+     41  1025		       a5 c5		      lda	$00C5
+     42  1027		       c9 40		      cmp	#64
+     43  1029		       f0 fa		      beq	loop
+     44  102b		       c9 11		      cmp	#17
+     45  102d		       f0 0b		      beq	is_a
+     46  102f		       c9 12		      cmp	#18
+     47  1031		       f0 0c		      beq	is_d
+     48  1033		       c9 21		      cmp	#33
+     49  1035		       f0 13		      beq	exit_prg
+     50  1037		       4c 25 10 	      jmp	loop
+     51  103a
+     52  103a				   is_a
+     53  103a							;    lda     #65
+     54  103a		       a9 01		      lda	#01
+     55  103c		       4c 44 10 	      jmp	printchar
+     56  103f				   is_d
+     57  103f							;    lda     #68
+     58  103f		       a9 02		      lda	#02
+     59  1041		       4c 44 10 	      jmp	printchar
+     60  1044
+     61  1044				   printchar
+     62  1044							;    jsr     CHROUT
+     63  1044		       8d 00 1e 	      STA	$1e00
+     64  1047		       4c 25 10 	      jmp	loop
+     65  104a
+     66  104a
+     67  104a				   exit_prg
+     68  104a		       60		      rts
+     69  104b

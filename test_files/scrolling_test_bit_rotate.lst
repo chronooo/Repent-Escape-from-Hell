@@ -1,0 +1,161 @@
+------- FILE scrolling_test_bit_rotate.s LEVEL 1 PASS 2
+      1  1c17					      processor	6502
+      2  1c18 ????
+      3  1c18 ????						;   KERNAL [sic] routines
+      4  1c18 ????
+      5  1c18 ????	       ff d2	   CHROUT     =	$ffd2
+      6  1c18 ????	       ff cf	   CHRIN      =	$ffcf
+      7  1c18 ????
+      8  1001					      org	$1001
+      9  1001		       0b 10		      dc.w	stubend
+     10  1003		       39 30		      dc.w	12345
+     11  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+     12  100b				   stubend
+     13  100b		       00 00		      dc.w	0
+     14  100d
+     15  100d				   start
+     16  100d
+     17  100d		       a9 02		      lda	#02
+     18  100f		       a2 00		      ldx	#0
+     19  1011				   whitescreen
+     20  1011		       9d 00 1e 	      STA	$1e00,X
+     21  1014		       e8		      INX
+     22  1015		       e0 ff		      cpx	#$FF
+     23  1017		       d0 f8		      BNE	whitescreen
+     24  1019		       9d 00 1e 	      STA	$1e00,X
+     25  101c
+     26  101c		       a9 02		      lda	#02
+     27  101e		       a2 00		      ldx	#0
+     28  1020				   whitescreen2
+     29  1020		       9d 00 1f 	      STA	$1f00,X
+     30  1023		       e8		      INX
+     31  1024		       e0 ff		      cpx	#$FF
+     32  1026		       d0 f8		      BNE	whitescreen2
+     33  1028		       9d 00 1f 	      STA	$1f00,X
+     34  102b
+     35  102b							;   Switching character set pointer to 0x1c00:
+     36  102b		       a9 ff		      lda	#255
+     37  102d		       8d 05 90 	      STA	$9005	; POKE 36869 255 (from book)
+     38  1030
+     39  1030							;   Next, fill 0x9600 - 0x9700 (color RAM) with $00
+     40  1030
+     41  1030							;   loop to fill 0x9600 - 0x96FF with FF:
+     42  1030		       a9 00		      lda	#$00
+     43  1032		       a2 00		      ldx	#$00
+     44  1034				   color_ram
+     45  1034		       9d 00 96 	      STA	$9600,X
+     46  1037		       e8		      INX
+     47  1038		       e0 ff		      cpx	#255
+     48  103a		       d0 f8		      BNE	color_ram
+     49  103c		       9d 00 96 	      STA	$9600,X
+     50  103f
+     51  103f							;   loop to fill 0x9700 - 0x97FF with FF:
+     52  103f		       a9 00		      lda	#$00
+     53  1041		       a2 00		      ldx	#0
+     54  1043				   color_ram1
+     55  1043		       9d 00 97 	      STA	$9700,X
+     56  1046		       e8		      INX
+     57  1047		       e0 ff		      cpx	#255
+     58  1049		       d0 f8		      BNE	color_ram1
+     59  104b		       9d 00 97 	      STA	$9700,X
+     60  104e
+     61  104e							;   Now, all the pixels on the display are enabled
+     62  104e
+     63  104e
+     64  104e				   loop
+     65  104e		       a5 c5		      lda	$00C5	; loads the current pressed key from memory
+     66  1050		       c9 40		      cmp	#64
+     67  1052		       f0 fa		      beq	loop
+     68  1054		       c9 11		      cmp	#17
+     69  1056		       f0 0c		      beq	is_a	; if A is pressed
+     70  1058		       c9 12		      cmp	#18
+     71  105a		       f0 21		      beq	is_d	; if D is pressed
+     72  105c		       c9 21		      cmp	#33
+     73  105e		       f0 03		      beq	exit_prg
+     74  1060		       4c 4e 10 	      jmp	loop
+     75  1063
+     76  1063				   exit_prg
+     77  1063		       60		      rts
+     78  1064
+     79  1064				   is_a 		; if a was pressed, decrease frame
+     80  1064
+     81  1064		       a2 00		      ldx	#0	; init counter to to loop though 8 byte character
+     82  1066				   ror_loop
+     83  1066
+     84  1066		       bd 10 1c 	      lda	$1c10,X
+     85  1069		       29 01		      and	#%00000001	; bit mask testing for last bit of the byte
+     86  106b		       d0 04		      bne	ror_set	; if zero flag is 0, need to set carry, else fall through
+     87  106d
+     88  106d		       18		      CLC		; clear carry cause bit was 0 (else)
+     89  106e		       4c 72 10 	      jmp	ror_p2
+     90  1071				   ror_set		; set carry cause bit was 1 (if)
+     91  1071		       38		      SEC
+     92  1072
+     93  1072				   ror_p2
+     94  1072		       7e 10 1c 	      ror	$1c10,X
+     95  1075		       e8		      INX
+     96  1076		       e0 08		      cpx	#8
+     97  1078		       d0 ec		      bne	ror_loop
+     98  107a		       4c 96 10 	      jmp	printchar
+     99  107d
+    100  107d				   is_d 		; if d was pressed, decrease frame
+    101  107d
+    102  107d		       a2 00		      ldx	#0	; init counter to to loop though 8 byte character
+    103  107f				   rol_loop
+    104  107f
+    105  107f		       bd 10 1c 	      lda	$1c10,X
+    106  1082		       29 80		      and	#%10000000	; bit mask testing for last bit of the byte
+    107  1084		       d0 04		      bne	rol_set	; if zero flag is 0, need to set carry, else fall through
+    108  1086
+    109  1086		       18		      CLC		; clear carry cause bit was 0 (else)
+    110  1087		       4c 8b 10 	      jmp	rol_p2
+    111  108a				   rol_set		; set carry cause bit was 1 (if)
+    112  108a		       38		      SEC
+    113  108b
+    114  108b				   rol_p2
+    115  108b		       3e 10 1c 	      rol	$1c10,X
+    116  108e		       e8		      INX
+    117  108f		       e0 08		      cpx	#8
+    118  1091		       d0 ec		      bne	rol_loop
+    119  1093		       4c 96 10 	      jmp	printchar
+    120  1096
+    121  1096				   printchar
+    122  1096
+    123  1096		       a4 00		      ldy	$0
+    124  1098				   waste_time_loop
+    125  1098		       c8		      INY
+    126  1099
+    127  1099							;     ldx     $0
+    128  1099							; waste_time_inner
+    129  1099							;     INX
+    130  1099							;     CPX     #$FF
+    131  1099							;     BNE     waste_time_inner
+    132  1099
+    133  1099		       c0 ff		      CPY	#$FF	; waste time by counting up to 255 in Y reg
+    134  109b		       d0 fb		      BNE	waste_time_loop
+    135  109d
+    136  109d
+    137  109d		       4c 4e 10 	      jmp	loop	; go to top of while loop
+    138  10a0
+    139  10a0
+    140  10a0							;/*
+    141  10a0							;------------------
+    142  10a0							;CHARACTER SET DATA:
+    143  10a0							;------------------
+    144  10a0							;*/
+    145  1c00					      org	$1c00
+    146  1c00
+    147  1c00							;	 CHAR 00	 ; all empty
+    148  1c00		       00 00 00 00*	      ds	8, $00	; declares 8 bytes of value 0x00
+    149  1c08							;	 CHAR 01	 ; all filled
+    150  1c08		       ff ff ff ff*	      ds	8, $FF	; declares 8 bytes of value 0xFF
+    151  1c10
+    152  1c10							;	 CHAR 02
+    153  1c10		       00		      dc.b	%00000000	; 0x1c10
+    154  1c11		       fe		      dc.b	%11111110	; 0x1c11
+    155  1c12		       c2		      dc.b	%11000010	; 0x1c12
+    156  1c13		       c2		      dc.b	%11000010	; 0x1c13
+    157  1c14		       c2		      dc.b	%11000010	; 0x1c14
+    158  1c15		       c2		      dc.b	%11000010	; 0x1c15
+    159  1c16		       fe		      dc.b	%11111110	; 0x1c16
+    160  1c17		       ff		      dc.b	%11111111	; 0x1c17
