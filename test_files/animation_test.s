@@ -18,81 +18,125 @@ stubend
     dc.w    0
 
 main
-    jsr     store_char
     jsr     clear_screen
 
-    ;charcterset to from 1c00
-    lda     #255
-    sta     $9005
-
-    ;start location
-    lda     #1
+    ;start top half location
+    lda     #$e6
     sta     $21
-    lda     #1
+    lda     #$1e
     sta     $22
+    lda     #$e6
+    sta     $23
+    lda     #$96
+    sta     $24
+
 
 main_loop
 
     lda     $00C5           ; loads the current pressed key from memory
 
-    cmp     #18 ;if s is presssed "test stage design)
-    beq     fall_f1
+case_fall
+    cmp     #41 ;if s is presssed "test stage design)
+    bne     case_rise
+    lda     #121
+    sta     $0
+    lda     #48
+    sta     $1
+    lda     #0
+    sta     $20
+    jmp     main_loop_finishing
+case_rise
     cmp     #9  ;if w is pressed
-    beq     top_f1
+    bne     case_left
+    lda     #120
+    sta     $0
+    lda     #48
+    sta     $1
+    lda     #0
+    sta     $20
+    jmp     main_loop_finishing
+case_left
     cmp     #17 ; if A is pressed
-    beq     left_f1
+    bne     case_right
+    lda     $20
+    cmp     #2 ;now is in left frame1->switch frame2
+    beq     left_f2
+    jmp     left_f1
+case_right
     cmp     #18 ; if D is pressed
-    beq     right_f1
-    cmp     #9  ;if W is pressed
-    beq     top_f1
-;any other case should be seen as idle?
-idle_f1
+    bne     case_idle
+    lda     $20
+    cmp     #3 ;now is in left frame1->switch frame2
+    beq     right_f2
+    jmp     right_f1
+case_idle
     lda     $20
     cmp     #1 ;now is in idle frame1->switch frame2
     beq     idle_f2
-
-    lda     #1
-    sta     $20
-    jmp     main_loop
-idle_f2
-
-
-    lda     #0
-    sta     $20
-    jmp     main_loop
+    jmp     idle_f1
 left_f1
-    lda     #$20
-    cmp     #2 ;now is in left frame1->switch frame2
-    beq     left_f2
-
-    lda     #0
+    lda     #115
+    sta     $0
+    lda     #'1
+    sta     $1
+    lda     #2
     sta     $20
-    jmp     main_loop
+    jmp     main_loop_finishing
 left_f2
-
+    lda     #116
+    sta     $0
+    lda     #'2
+    sta     $1
     lda     #0
     sta     $20
-    jmp     main_loop
+    jmp     main_loop_finishing
 right_f1
-    lda     #$20
-    cmp     #4 ;now is in left frame1->switch frame2
-    beq     right_f2
-
+    lda     #107
+    sta     $0
+    lda     #'1
+    sta     $1
     lda     #3
     sta     $20
-    jmp     main_loop
+    jmp     main_loop_finishing
 right_f2
-
+    lda     #118
+    sta     $0
+    lda     #'2
+    sta     $1
     lda     #0
     sta     $20
-    jmp     main_loop
-top_f1
+    jmp     main_loop_finishing
+idle_f1
+    lda     #69
+    sta     $0
+    lda     #'1
+    sta     $1
+    lda     #1
+    sta     $20
+    jmp     main_loop_finishing
+idle_f2
+    lda     #70
+    sta     $0
+    lda     #'2
+    sta     $1
+    lda     #0
+    sta     $20
+    jmp     main_loop_finishing
+main_loop_finishing
+    ;drawing characters to the location
+    lda     $0
+    ldy     #$0
+    sta     ($21),y
+    lda     $1
+    ldy     #$16
+    sta     ($21),y
 
-    jmp     main_update_shift_end
-fall_f1
-
-
-;finishing
+    ;drawing character with color
+    lda     #$2
+    ldy     #$0
+    sta     ($23),y
+    ldy     #$16
+    sta     ($23),y
     jsr     interval_start
     jmp     main_loop
 exit_prg
@@ -138,7 +182,7 @@ delay255_start
     lda #$0
     sta $01
 delay255_loop
-    lda $01
+    lda $02
     cmp #$FF
     beq delay255_done
     inc $01

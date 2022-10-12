@@ -7,9 +7,9 @@
 stubend
     dc.w    0
 main
-    lda #21
+    lda #10
     sta $21
-    lda #12
+    lda #10
     sta $22
     jsr shift_on_monitor
 end
