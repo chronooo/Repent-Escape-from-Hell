@@ -7,7 +7,7 @@
     ; idle frame 1: 1
     ; left frame 1: 2
     ; right frame 1: 3
-    ; memo: 5bits remaining
+    ; memo: 6 bits remaining
 ;   21: x movement
 ;   22: y movement
     org     $1001
@@ -43,7 +43,7 @@ case_fall
     lda     #48
     sta     $1
     lda     #0
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 case_rise
     cmp     #9  ;if w is pressed
@@ -53,7 +53,7 @@ case_rise
     lda     #48
     sta     $1
     lda     #0
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 case_left
     cmp     #17 ; if A is pressed
@@ -80,7 +80,7 @@ left_f1
     lda     #'1
     sta     $1
     lda     #2
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 left_f2
     lda     #116
@@ -88,7 +88,7 @@ left_f2
     lda     #'2
     sta     $1
     lda     #0
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 right_f1
     lda     #107
@@ -96,7 +96,7 @@ right_f1
     lda     #'1
     sta     $1
     lda     #3
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 right_f2
     lda     #118
@@ -104,7 +104,7 @@ right_f2
     lda     #'2
     sta     $1
     lda     #0
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 idle_f1
     lda     #69
@@ -112,7 +112,7 @@ idle_f1
     lda     #'1
     sta     $1
     lda     #1
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 idle_f2
     lda     #70
@@ -120,9 +120,11 @@ idle_f2
     lda     #'2
     sta     $1
     lda     #0
-    sta     $20
+    sta     $2
     jmp     main_loop_finishing
 main_loop_finishing
+    lda     $2
+    sta     $20
     ;drawing characters to the location
     lda     $0
     ldy     #$0
@@ -182,7 +184,7 @@ delay255_start
     lda #$0
     sta $01
 delay255_loop
-    lda $02
+    lda $01
     cmp #$FF
     beq delay255_done
     inc $01
