@@ -1,8 +1,0 @@
-------- FILE compiletest2.s LEVEL 1 PASS 1
-      1  0000					      processor	6502
-      2  0000 ????
-      3  1234					      org	$1234
-      4  1234		       a9 2a		      lda	#42
-      5  1236				   label1
-      6  1236		       8d 34 12 	      sta	$1234
-      7  1239		       60		      rts
