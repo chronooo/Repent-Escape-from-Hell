@@ -12,6 +12,7 @@ customg:	customgraphics.prg
 
 titlescreen:	titlescreentest.prg
 
+incltest:	includetest.prg
 
 clean:
 			rm *.prg *.lst 
@@ -21,3 +22,5 @@ inputtest.prg:	inputtest.s
 customgraphics.prg:	customgraphics.s
 
 titlescreentest.prg:	titlescreentest.s
+
+includetest.prg:	includetest.s includetest1.s
