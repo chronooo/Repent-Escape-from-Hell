@@ -11,7 +11,7 @@
 %.prg:
 										dasm $< -o$@ -l$*.lst
 
-all:									stubby.prg compiletest.prg compiletest2.prg custom_char_test.prg scrolling_test.prg	scrolling_test_bit_rotate.prg audio_test.prg
+all:									stubby.prg compiletest.prg compiletest2.prg custom_char_test.prg scrolling_test.prg	scrolling_test_bit_rotate.prg audio_test.prg shift_on_monitor.prg character_frame_switching_test.prg
 
 stubby.prg:								stubby.s
 compiletest.prg:						compiletest.s
