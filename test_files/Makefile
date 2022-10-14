@@ -1,15 +1,5 @@
 USER=$(shell whoami)
 
-
-
-
-# archer: DASM:=C:\run\dasm.exe	
-# archer: 								all
-# bern: DASM=~aycock/599.82/bin/dasm
-# bern:									all
-# taras: DASM=dasm
-# taras: 									all
-
 ifeq "$(USER)" "bernardo.klein"
 DASM=~aycock/599.82/bin/dasm
 %.prg:
@@ -28,7 +18,7 @@ DASM=dasm
 										$(DASM) $< -o$@ -l$*.lst
 endif
 
-all:									stubby.prg compiletest.prg compiletest2.prg custom_char_test.prg scrolling_test.prg	scrolling_test_bit_rotate.prg audio_test.prg shift_on_monitor.prg character_frame_switching_test.prg movement_test.prg health_test.prg
+all:									stubby.prg compiletest.prg compiletest2.prg custom_char_test.prg scrolling_test.prg scrolling_test_bit_rotate.prg audio_test.prg shift_on_monitor.prg character_frame_switching_test.prg movement_test.prg movement_test.prg health_test.prg titlescreentest.prg includetest.prg
 
 clean:
 	- rm -f *.prg *.lst 
