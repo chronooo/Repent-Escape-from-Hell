@@ -1,15 +1,21 @@
-# DASM	=  'C:\run\dasm.exe' - ARCHER WAY
-# %.prg:
-# 						$(DASM) $< -o$@ -l$*.lst
+#	usage:
+#   type "make user", user being one of [archer, bern, taras]
 
-# all:					character_frame_switching_test.prg
+default:					
+										$(error No second argument found. Usage: make user, user being one of [archer, bern, taras])"
 
-# shift_on_monitor.prg:				shift_on_monitor.s
-# character_frame_switching_test.prg:		character_frame_switching_test.s
+clean:
+			rm *.prg *.lst 
 
+archer: DASM = C:\run\dasm.exe	
+archer: 								all
+bern: DASM =  ~aycock/599.82/bin/dasm
+bern: 									all
+taras: DASM = dasm	
+taras: 									all
 
 %.prg:
-										dasm $< -o$@ -l$*.lst
+										$(DASM) $< -o$@ -l$*.lst
 
 all:									stubby.prg compiletest.prg compiletest2.prg custom_char_test.prg scrolling_test.prg	scrolling_test_bit_rotate.prg audio_test.prg shift_on_monitor.prg character_frame_switching_test.prg movement_test.prg health_test.prg
 
