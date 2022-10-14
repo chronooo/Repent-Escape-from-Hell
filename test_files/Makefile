@@ -44,3 +44,6 @@ shift_on_monitor.prg:					shift_on_monitor.s
 character_frame_switching_test.prg:		character_frame_switching_test.s
 movement_test.prg:						movement_test.s
 health_test.prg:						health_test.s
+titlescreentest.prg						titlescreentest.s
+includetest.prg							includetest.s includetest1.s
+jumpingtest.prg							jumpingtest.s
