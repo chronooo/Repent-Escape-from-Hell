@@ -137,8 +137,8 @@ on_top_checking_loop
     cpx     $23
     beq     normal_jumping
     ;update y for shift on monitor
-    sec
     stx     $0
+    sec
     lda     $22
     sbc     $0
     sta     $1
