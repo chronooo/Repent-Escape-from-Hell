@@ -1,12 +1,6 @@
     processor 6502
 
 ;   KERNAL [sic] routines
-IDLE_TOP_1 = "12345"
-IDLE_TOP_2 = "12345"
-LEFT_TOP_1 = "12345"
-LEFT_TOP_2 = "12345"
-RIGHT_TOP_1 = "12345"
-RIGHT_TOP_2 = "12345"
 ;   zero PAGE USage
 ;   20:current status(idle/left/right + frame/1/2)
     ; idle frame 1/2: 0/1
