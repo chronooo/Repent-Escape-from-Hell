@@ -111,8 +111,28 @@ main_update_shift_end
     jsr     interval_start
     jmp     main_loop
 
-shoot 
-    
+; calculate current position for loading projectile position
+curposition ; = (22*y) + x 
+;$21 = x $22 = y 
+; start accumulator at 22
+    lda     #22
+    ldx     #00
+cur1
+    adc     #22
+    inx
+    cmp     $22
+    BNE     cur1 ;once bne is false multiplied 22 times total
+    clc 
+    adc     $21 ; add x value 
+    sta     $a ; store current position (needs to be added to color ram or screen)
+    clc        ; in zero page $a, for future reference
+    rts
+
+shoot ; rendering and removing projectile shot
+    ; load bullet 1 screen address in front of player and make it fly
+    ; for 3-5 frames not sure yet in a loop
+    ; each iteration of loop overwrite previous position and render it in
+    ; new position
     jmp main_loop
 exit_prg
     rts
