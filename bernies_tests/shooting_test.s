@@ -1,6 +1,12 @@
     processor 6502
 
 ;   KERNAL [sic] routines
+IDLE_TOP_1 = "12345"
+IDLE_TOP_2 = "12345"
+LEFT_TOP_1 = "12345"
+LEFT_TOP_2 = "12345"
+RIGHT_TOP_1 = "12345"
+RIGHT_TOP_2 = "12345"
 ;   zero PAGE USage
 ;   20:current status(idle/left/right + frame/1/2)
     ; idle frame 1/2: 0/1
@@ -16,7 +22,7 @@ stubend
     dc.w    0
 
 main
-    jsr     store_char
+    ;jsr     store_char
     jsr     clear_screen
 
     ;charcterset to from 1c00
@@ -51,6 +57,8 @@ main_loop
     beq     w_top
     cmp     #41 ;if S is pressed
     beq     s_down
+    cmp     #20 ; if J is pressed (shoot)
+    beq     shoot 
     cmp     #33
     beq     exit_prg
 main_update_shift
@@ -102,6 +110,30 @@ main_update_shift_end
 
     jsr     interval_start
     jmp     main_loop
+
+; calculate current position for loading projectile position
+curposition ; = (22*y) + x 
+;$21 = x $22 = y 
+; start accumulator at 22
+    lda     #22
+    ldx     #00
+cur1
+    adc     #22
+    inx
+    cmp     $22
+    BNE     cur1 ;once bne is false multiplied 22 times total
+    clc 
+    adc     $21 ; add x value 
+    sta     $a ; store current position (needs to be added to color ram or screen)
+    clc        ; in zero page $a, for future reference
+    rts
+
+shoot ; rendering and removing projectile shot
+    ; load bullet 1 screen address in front of player and make it fly
+    ; for 3-5 frames not sure yet in a loop
+    ; each iteration of loop overwrite previous position and render it in
+    ; new position
+    jmp main_loop
 exit_prg
     rts
 
@@ -210,20 +242,34 @@ delay255_done
     ;include "shift_on_monitor.s"
     ;include "tempChars.s"
 store_char
-    ldx     #$0
-    lda     #$0
-char1
-    cpx     #8
-    beq     char2
-    sta     $1c00,x
-    inx
-    jmp     char1
-char2
-    lda     #$ff
-    cpx     #16
-    beq     store_char_end
-    sta     $1c00,x
-    inx
-    jmp     char2
+    org     $1c00
+
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+    dc.b    %00000000
+
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+    dc.b    %11111111 
+
+    dc.b    %00000000 
+    dc.b    %00000000 
+    dc.b    %00000000 
+    dc.b    %11111111 
+    dc.b    %00000000 
+    dc.b    %00000000 
+    dc.b    %00000000 
+    dc.b    %00000000 
+
 store_char_end
-    rts
+    ;rts

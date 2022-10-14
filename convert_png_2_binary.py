@@ -1,4 +1,6 @@
 from PIL import Image
+width = 8
+height = 16
 import sys
 ascii_char = list("$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. ")
 def get_char(r,g,b,alpha = 256):
@@ -11,12 +13,12 @@ def get_char(r,g,b,alpha = 256):
 if __name__ == '__main__':
     IMG = sys.argv[1]
     im = Image.open(IMG)
-    im = im.resize((8,8), Image.NEAREST)
+    im = im.resize((width,heigh), Image.NEAREST)
     txt = ""
     printable_text = ""
-    for i in range(8):
+    for i in range(height):
         txt += "%"
-        for j in range(8):
+        for j in range(width):
             temp_char = get_char(*im.getpixel((j,i)))
             if temp_char == " ":
                 temp_char0 = " "
