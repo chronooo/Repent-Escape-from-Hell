@@ -1,28 +1,28 @@
-------- FILE jumpingtest.s LEVEL 1 PASS 3
-      1  1214					      processor	6502
-      2  1215 ????
-      3  1215 ????						;   jumpting test developed based on moving test.
-      4  1215 ????						;   Usage:
-      5  1215 ????						;W: jump to air without crashing with anything
-      6  1215 ????						;S: crash to a virual celing 2 squares above
-      7  1215 ????						;how finish collision?
-      8  1215 ????						;Z: exit
-      9  1215 ????
-     10  1215 ????						;   temporarily zeropage usage,
-     11  1215 ????						;   19: (12,10) is an obstacle flag, will be fixed after collision problem is solved.
-     12  1215 ????						;   zero PAGE USage
-     13  1215 ????						;   20:current status(idle/left/right + frame/1/2)
-     14  1215 ????						; ******XX
-     15  1215 ????						; not frame 1: 0
-     16  1215 ????						; idle frame 1: 1
-     17  1215 ????						; left frame 1: 2
-     18  1215 ????						; right frame 1: 3
-     19  1215 ????						;*****X**
-     20  1215 ????						; falling flag: 0 is not falling (either jumping to air or waling on ground)m
-     21  1215 ????						; memo: 5 bits remaining
-     22  1215 ????						;   21: x movement
-     23  1215 ????						;   22: y movement
-     24  1215 ????						;   23: vertical speed
+------- FILE jumpingtest.s LEVEL 1 PASS 2
+      1  121e					      processor	6502
+      2  121f ????
+      3  121f ????						;   jumpting test developed based on moving test.
+      4  121f ????						;   Usage:
+      5  121f ????						;W: jump to air without crashing with anything
+      6  121f ????						;S: crash to a virual celing 2 squares above
+      7  121f ????						;how finish collision?
+      8  121f ????						;Z: exit
+      9  121f ????
+     10  121f ????						;   temporarily zeropage usage,
+     11  121f ????						;   19: (12,10) is an obstacle flag, will be fixed after collision problem is solved.
+     12  121f ????						;   zero PAGE USage
+     13  121f ????						;   20:current status(idle/left/right + frame/1/2)
+     14  121f ????						; ******XX
+     15  121f ????						; not frame 1: 0
+     16  121f ????						; idle frame 1: 1
+     17  121f ????						; left frame 1: 2
+     18  121f ????						; right frame 1: 3
+     19  121f ????						;*****X**
+     20  121f ????						; falling flag: 0 is not falling (either jumping to air or waling on ground)m
+     21  121f ????						; memo: 5 bits remaining
+     22  121f ????						;   21: x movement
+     23  121f ????						;   22: y movement
+     24  121f ????						;   23: vertical speed
      25  1001					      org	$1001
      26  1001		       0b 10		      dc.w	stubend
      27  1003		       39 30		      dc.w	12345
@@ -31,9 +31,9 @@
      30  100b		       00 00		      dc.w	0
      31  100d
      32  100d				   main
-     33  100d		       20 13 11 	      jsr	startup
+     33  100d		       20 1b 11 	      jsr	startup
      34  1010				   main_loop
-     35  1010		       20 84 11 	      jsr	player_location
+     35  1010		       20 8e 11 	      jsr	player_location
      36  1013		       a9 00		      lda	#$0
      37  1015		       a0 00		      ldy	#$0
      38  1017		       91 02		      sta	($02),y
@@ -42,360 +42,360 @@
      41  101d		       91 02		      sta	($02),y
      42  101f		       91 04		      sta	($04),y
      43  1021
-     44  1021
-     45  1021		       a5 c5		      lda	$00C5	; loads the current pressed key from memory
-     46  1023				   keyboard_triggers
-     47  1023		       c9 40		      cmp	#64	;if nothing held down
-     48  1025		       f0 15		      beq	case_idle
-     49  1027		       c9 11		      cmp	#17	; if A is pressed
-     50  1029		       f0 14		      beq	a_left
-     51  102b		       c9 12		      cmp	#18	; if D is pressed
-     52  102d		       f0 1b		      beq	d_right
-     53  102f		       c9 09		      cmp	#9	;if W is pressed
-     54  1031		       f0 22		      beq	w_jump
-     55  1033		       c9 29		      cmp	#41	;if S is pressed
-     56  1035		       f0 49		      beq	s_down
-     57  1037		       c9 21		      cmp	#33
-     58  1039		       f0 00		      beq	exit_prg	; if z is pressed
-     59  103b				   exit_prg
-     60  103b		       60		      rts
-     61  103c
-     62  103c				   case_idle
-     63  103c							;coordinate not updated
-     64  103c		       4c 90 10 	      jmp	vertical_movement
-     65  103f				   a_left
-     66  103f							;check if x<1
-     67  103f		       a5 21		      lda	$21
-     68  1041		       c9 01		      cmp	#1
-     69  1043		       90 f7		      bcc	case_idle	;tooleft,cannotmove
-     70  1045		       c6 21		      dec	$21
-     71  1047		       4c 90 10 	      jmp	vertical_movement
-     72  104a				   d_right
-     73  104a							;check if x> 20 => 20< X (21 is maximum)
-     74  104a		       a9 14		      lda	#20
-     75  104c		       c5 21		      cmp	$21
-     76  104e		       90 ec		      bcc	case_idle	;too right
-     77  1050		       e6 21		      inc	$21
-     78  1052		       4c 90 10 	      jmp	vertical_movement
-     79  1055				   w_jump
-     80  1055							;if 2 squares below is on ground, and falling flag is 1,
-     81  1055							;set falling flag to be 0 and initial vertical speed.
-     82  1055							;check 2 squares from head below is ground or not.
-     83  1055		       a5 21		      lda	$21
-     84  1057		       85 00		      sta	$0
-     85  1059		       a5 22		      lda	$22
-     86  105b		       18		      clc
-     87  105c		       69 02		      adc	#2
-     88  105e		       85 01		      sta	$1
-     89  1060		       20 90 11 	      jsr	shift_on_monitor
-     90  1063		       a0 00		      ldy	#$0
-     91  1065		       b1 04		      lda	($04),y
-     92  1067		       c9 05		      cmp	#05	;use color for verifying ground at the moment
-     93  1069		       d0 12		      bne	w_jump_verification_done
-     94  106b							;check falling flag
-     95  106b		       a9 04		      lda	#%00000100
-     96  106d		       25 20		      and	$20
-     97  106f		       c9 04		      cmp	#%00000100
-     98  1071		       d0 0a		      bne	w_jump_verification_done
-     99  1073							;set up jump flag and initial vertical speed
-    100  1073		       a9 fb		      lda	#%11111011
-    101  1075		       25 20		      and	$20
-    102  1077		       85 20		      sta	$20
-    103  1079		       a9 03		      lda	#3
-    104  107b		       85 23		      sta	$23
-    105  107d				   w_jump_verification_done
-    106  107d		       4c 90 10 	      jmp	vertical_movement
-    107  1080
-    108  1080				   s_down
-    109  1080							;used for reset
-    110  1080		       a9 00		      lda	#0
-    111  1082		       85 21		      sta	$21
-    112  1084		       a9 0c		      lda	#12
-    113  1086		       85 22		      sta	$22
-    114  1088		       a9 04		      lda	#%00000100
-    115  108a		       85 20		      sta	$20	;reset jump flag
-    116  108c		       a9 00		      lda	#0
-    117  108e		       85 23		      sta	$23
-    118  1090
-    119  1090
-    120  1090				   vertical_movement
-    121  1090
-    122  1090				   revise_vertical_speed
-    123  1090							;   check is jumping
-    124  1090		       a9 04		      lda	#%00000100
-    125  1092		       25 20		      and	$20
-    126  1094		       c9 04		      cmp	#%00000100
-    127  1096		       f0 44		      beq	revise_vertical_falling_speed
-    128  1098							;case jumping
-    129  1098		       a5 23		      lda	$23
-    130  109a		       c9 00		      cmp	#0	;change to fall when vertical spped is 0
-    131  109c		       f0 33		      beq	stop_jumping
-    132  109e		       a5 22		      lda	$22
-    133  10a0		       c9 00		      cmp	#0	;change to fall when at top border
-    134  10a2		       f0 2d		      beq	stop_jumping
-    135  10a4
-    136  10a4				   on_top_checking
-    137  10a4		       a2 00		      ldx	#0
-    138  10a6				   on_top_checking_loop
-    139  10a6		       e4 23		      cpx	$23
-    140  10a8		       f0 2f		      beq	revise_vertical_jumping_done
-    141  10aa							;update y for shift on monitor
-    142  10aa		       86 00		      stx	$0
-    143  10ac		       a5 22		      lda	$22
-    144  10ae		       e5 00		      sbc	$0
-    145  10b0		       85 01		      sta	$1
-    146  10b2							;x for shift on monitor
-    147  10b2		       a5 21		      lda	$21
-    148  10b4		       85 00		      sta	$0
-    149  10b6		       20 90 11 	      jsr	shift_on_monitor
-    150  10b9
-    151  10b9		       a0 00		      ldy	#$0
-    152  10bb		       b1 04		      lda	($04),y
-    153  10bd		       c9 01		      cmp	#01	;use color for verifying ground at the moment
-    154  10bf		       d0 04		      bne	crashed_jumping
-    155  10c1		       e8		      inx
-    156  10c2		       4c a6 10 	      jmp	on_top_checking_loop
-    157  10c5				   crashed_jumping
-    158  10c5		       ca		      dex		;can only jump to the squre next to obstacle
-    159  10c6		       86 23		      stx	$23
-    160  10c8				   normal_jumping
-    161  10c8		       a9 01		      lda	#$01
-    162  10ca		       e5 23		      sbc	$23
-    163  10cc		       85 23		      sta	$23
-    164  10ce		       4c d9 10 	      jmp	revise_vertical_jumping_done
-    165  10d1				   stop_jumping
-    166  10d1		       a9 04		      lda	#%00000100
-    167  10d3		       05 20		      ora	$20
-    168  10d5		       a9 00		      lda	#$0
-    169  10d7		       85 23		      sta	$23
-    170  10d9				   revise_vertical_jumping_done
-    171  10d9		       4c dc 10 	      jmp	main_update_vertical_shift
-    172  10dc				   revise_vertical_falling_speed
-    173  10dc
-    174  10dc				   main_update_vertical_shift
-    175  10dc							;is vertical speed 0?
-    176  10dc		       a5 23		      lda	$23
-    177  10de		       c9 00		      cmp	#0
-    178  10e0		       f0 14		      beq	main_update_shift_end
-    179  10e2							;falling or jumping?
-    180  10e2		       a9 04		      lda	#%00000100
-    181  10e4		       25 20		      and	$20
-    182  10e6		       c9 00		      cmp	#%00000000
-    183  10e8		       d0 06		      bne	update_vertical_shift_falling
-    184  10ea							;case jumping
-    185  10ea		       a5 23		      lda	$23
-    186  10ec		       e5 22		      sbc	$22
-    187  10ee		       85 22		      sta	$22
-    188  10f0				   update_vertical_shift_falling
-    189  10f0		       a5 23		      lda	$23
-    190  10f2		       65 22		      adc	$22
-    191  10f4		       85 22		      sta	$22
-    192  10f6
-    193  10f6				   main_update_shift_end
-    194  10f6		       20 84 11 	      jsr	player_location
-    195  10f9		       a0 00		      ldy	#$0
-    196  10fb		       a9 01		      lda	#01	;a squre
-    197  10fd		       91 02		      sta	($02),y
-    198  10ff		       a0 16		      ldy	#$16
-    199  1101		       91 02		      sta	($02),y
-    200  1103
-    201  1103		       a9 02		      lda	#02	;color red
-    202  1105		       a0 00		      ldy	#$0
-    203  1107		       91 04		      sta	($04),y
-    204  1109		       a0 16		      ldy	#$16
-    205  110b		       91 04		      sta	($04),y
-    206  110d
-    207  110d		       20 f2 11 	      jsr	interval_start
-    208  1110		       4c 10 10 	      jmp	main_loop
-    209  1113
-    210  1113							;=====================================
-    211  1113							;    tempordary code for jumping and falling tests
-    212  1113							;=====================================
-    213  1113				   startup
-    214  1113
-    215  1113							;charcterset to from 1c00
-    216  1113		       a9 ff		      lda	#255
-    217  1115		       8d 05 90 	      sta	$9005
-    218  1118
-    219  1118		       20 67 11 	      jsr	store_char
-    220  111b		       20 d7 11 	      jsr	clear_screen
-    221  111e
-    222  111e
-    223  111e
-    224  111e				   draw_an_obstacle
-    225  111e		       a9 0c		      lda	#12
-    226  1120		       85 00		      sta	$00
-    227  1122		       a9 0a		      lda	#10
-    228  1124		       85 01		      sta	$01
-    229  1126		       20 90 11 	      jsr	shift_on_monitor
-    230  1129		       a0 00		      ldy	#$0
-    231  112b		       a9 01		      lda	#01	;a squre
-    232  112d		       91 02		      sta	($02),y
-    233  112f		       a9 06		      lda	#06	;color orange
-    234  1131		       a0 00		      ldy	#$0
-    235  1133		       91 04		      sta	($04),y
-    236  1135		       a0 16		      ldy	#$16
-    237  1137		       91 04		      sta	($04),y
-    238  1139
-    239  1139				   drawing_ground
-    240  1139		       a2 00		      ldx	#0
-    241  113b				   drawing_ground_loop
-    242  113b		       a9 0e		      lda	#14
-    243  113d		       85 01		      sta	$01
-    244  113f		       e0 14		      cpx	#20
-    245  1141		       f0 15		      beq	drawing_ground_done
-    246  1143		       86 00		      stx	$00
-    247  1145		       20 90 11 	      jsr	shift_on_monitor
-    248  1148		       a0 00		      ldy	#$0
-    249  114a		       a9 01		      lda	#01	;a squre
-    250  114c		       91 02		      sta	($02),y
-    251  114e		       a9 05		      lda	#05	;color green
-    252  1150		       a0 00		      ldy	#$0
-    253  1152		       91 04		      sta	($04),y
-    254  1154		       e8		      inx
-    255  1155		       4c 3b 11 	      jmp	drawing_ground_loop
-    256  1158				   drawing_ground_done
-    257  1158
-    258  1158							;start location
-    259  1158		       a9 0c		      lda	#12
-    260  115a		       85 21		      sta	$21
-    261  115c		       a9 0c		      lda	#12
-    262  115e		       85 22		      sta	$22
-    263  1160		       a9 04		      lda	#%00000100
-    264  1162		       85 20		      sta	$20
-    265  1164		       a9 00		      lda	#0
-jumpingtest.s (266): error: Illegal Addressing mode 'sta #23'.
-    266  1166					      sta	#23
-    267  1166		       60		      rts
-    268  1167
-    269  1167							;============================
-    270  1167				   store_char
-    271  1167		       a2 00		      ldx	#$0
-    272  1169		       a9 00		      lda	#$0
-    273  116b				   char1
-    274  116b		       e0 08		      cpx	#8
-    275  116d		       f0 07		      beq	char2
-    276  116f		       9d 00 1c 	      sta	$1c00,x
-    277  1172		       e8		      inx
-    278  1173		       4c 6b 11 	      jmp	char1
-    279  1176				   char2
-    280  1176		       a9 ff		      lda	#$ff
-    281  1178		       e0 10		      cpx	#16
-    282  117a		       f0 07		      beq	store_char_end
-    283  117c		       9d 00 1c 	      sta	$1c00,x
-    284  117f		       e8		      inx
-    285  1180		       4c 76 11 	      jmp	char2
-    286  1183				   store_char_end
-    287  1183		       60		      rts
-    288  1184
-    289  1184							;=====================================
-    290  1184							;player location
-    291  1184				   player_location
-    292  1184		       a5 21		      lda	$21
-    293  1186		       85 00		      sta	$00
-    294  1188		       a5 22		      lda	$22
-    295  118a		       85 01		      sta	$01
-    296  118c		       20 90 11 	      jsr	shift_on_monitor
-    297  118f		       60		      rts
-    298  1190
-    299  1190
-    300  1190							;updated shift on monitor
-    301  1190							;take take y@[01],x@[00],store to [01][00] as shift,(small endian)
-    302  1190							;[03][02] as character movment, [05][04]as screen color movment
-    303  1190							;take take y@[22],x@[21],store to [01][00] as shift,
-    304  1190							;[03][02] as character movment, [05][04]as screen color movment
-    305  1190				   shift_on_monitor
-    306  1190		       a5 00		      lda	$00
-    307  1192		       85 03		      sta	$03	;->xto[3]
-    308  1194		       a5 01		      lda	$01
-    309  1196		       85 04		      sta	$04	; -> y to [4]
-    310  1198		       a9 00		      lda	#$00
-    311  119a		       85 01		      sta	$01
-    312  119c		       85 00		      sta	$00
-    313  119e				   som_loop
-    314  119e				   som_y
-    315  119e		       a5 04		      lda	$04
-    316  11a0		       c9 00		      cmp	#$0
-    317  11a2		       f0 12		      beq	som_x
-    318  11a4		       18		      clc
-    319  11a5		       a9 16		      lda	#22
-    320  11a7		       65 00		      adc	$0
-    321  11a9		       85 00		      sta	$0
-    322  11ab
-    323  11ab		       a5 01		      lda	$01
-    324  11ad		       69 00		      adc	#$0
-    325  11af		       85 01		      sta	$01
-    326  11b1
-    327  11b1		       c6 04		      dec	$04
-    328  11b3		       4c 9e 11 	      jmp	som_y
-    329  11b6				   som_x
-    330  11b6		       18		      clc
-    331  11b7		       a5 03		      lda	$03
-    332  11b9		       65 00		      adc	$0
-    333  11bb		       85 00		      sta	$0
-    334  11bd		       a5 01		      lda	$01
-    335  11bf		       69 00		      adc	#$0
-    336  11c1		       85 01		      sta	$01
-    337  11c3
-    338  11c3							;calculate movement of characters
-    339  11c3							;not out of border is assumend
-    340  11c3							;last 2 digit always 0
-    341  11c3		       a5 00		      lda	$00
-    342  11c5		       85 02		      sta	$02
-    343  11c7		       85 04		      sta	$04
-    344  11c9		       18		      clc
-    345  11ca
-    346  11ca		       a9 1e		      lda	#$1e
-    347  11cc		       65 01		      adc	$01
-    348  11ce		       85 03		      sta	$03
-    349  11d0
-    350  11d0		       a9 96		      lda	#$96
-    351  11d2		       65 01		      adc	$01
-    352  11d4		       85 05		      sta	$05
-    353  11d6		       60		      rts
-    354  11d7
-    355  11d7							;function:clear screen
-    356  11d7				   clear_screen
-    357  11d7		       a9 00		      lda	#0
-    358  11d9		       a2 00		      ldx	#0
-    359  11db				   clear_char
-    360  11db		       9d 00 1e 	      STA	$1e00,X
-    361  11de		       9d 00 1f 	      STA	$1f00,X
-    362  11e1		       e8		      INX
-    363  11e2		       d0 f7		      BNE	clear_char
-    364  11e4
-    365  11e4		       a9 01		      lda	#01
-    366  11e6		       a2 00		      ldx	#0
-    367  11e8				   white_color
-    368  11e8		       9d 00 96 	      STA	$9600,X
-    369  11eb		       9d ff 96 	      STA	$96ff,x
-    370  11ee		       e8		      INX
-    371  11ef		       d0 f7		      BNE	white_color
-    372  11f1		       60		      rts
-    373  11f2							;function:clear screen end
-    374  11f2
-    375  11f2							;loopoverdelay255
-    376  11f2				   interval_start
-    377  11f2		       a9 00		      lda	#$0
-    378  11f4		       85 11		      sta	$11
-    379  11f6				   interval_loop
-    380  11f6		       a5 11		      lda	$11
-    381  11f8		       c9 0a		      cmp	#$0a
-    382  11fa		       f0 08		      beq	interval_done
-    383  11fc		       e6 11		      inc	$11
-    384  11fe		       20 05 12 	      jsr	delay255_start
-    385  1201		       4c f6 11 	      jmp	interval_loop
-    386  1204				   interval_done
-    387  1204		       60		      rts
-    388  1205							;delay loop
-    389  1205				   delay255_start
-    390  1205		       a9 00		      lda	#$0
-    391  1207		       85 01		      sta	$01
-    392  1209				   delay255_loop
-    393  1209		       a5 01		      lda	$01
-    394  120b		       c9 ff		      cmp	#$FF
-    395  120d		       f0 05		      beq	delay255_done
-    396  120f		       e6 01		      inc	$01
-    397  1211		       4c 09 12 	      jmp	delay255_loop
-    398  1214				   delay255_done
-    399  1214		       60		      rts
+     44  1021		       a5 c5		      lda	$00C5	; loads the current pressed key from memory
+     45  1023				   keyboard_triggers
+     46  1023		       c9 11		      cmp	#17	; if A is pressed
+     47  1025		       f0 17		      beq	a_left
+     48  1027		       c9 12		      cmp	#18	; if D is pressed
+     49  1029		       f0 1e		      beq	d_right
+     50  102b		       c9 09		      cmp	#9	;if W is pressed
+     51  102d		       f0 25		      beq	w_jump
+     52  102f		       c9 29		      cmp	#41	;if S is pressed
+     53  1031		       f0 4c		      beq	s_down
+     54  1033		       c9 21		      cmp	#33
+     55  1035		       f0 03		      beq	exit_prg	; if z is pressed
+     56  1037		       4c 3b 10 	      jmp	case_idle
+     57  103a				   exit_prg
+     58  103a		       60		      rts
+     59  103b
+     60  103b				   case_idle
+     61  103b							;coordinate not updated
+     62  103b		       4c 8f 10 	      jmp	vertical_movement
+     63  103e				   a_left
+     64  103e							;check if x<1
+     65  103e		       a5 21		      lda	$21
+     66  1040		       c9 01		      cmp	#1
+     67  1042		       90 f7		      bcc	case_idle	;tooleft,cannotmove
+     68  1044		       c6 21		      dec	$21
+     69  1046		       4c 8f 10 	      jmp	vertical_movement
+     70  1049				   d_right
+     71  1049							;check if x> 20 => 20< X (21 is maximum)
+     72  1049		       a9 14		      lda	#20
+     73  104b		       c5 21		      cmp	$21
+     74  104d		       90 ec		      bcc	case_idle	;too right
+     75  104f		       e6 21		      inc	$21
+     76  1051		       4c 8f 10 	      jmp	vertical_movement
+     77  1054				   w_jump
+     78  1054							;if 2 squares below is on ground, and falling flag is 1,
+     79  1054							;set falling flag to be 0 and initial vertical speed.
+     80  1054							;check 2 squares from head below is ground or not.
+     81  1054		       a5 21		      lda	$21
+     82  1056		       85 00		      sta	$0
+     83  1058		       a5 22		      lda	$22
+     84  105a		       18		      clc
+     85  105b		       69 02		      adc	#2
+     86  105d		       85 01		      sta	$1
+     87  105f		       20 9a 11 	      jsr	shift_on_monitor
+     88  1062		       a0 00		      ldy	#$0
+     89  1064		       b1 04		      lda	($04),y
+     90  1066		       c9 05		      cmp	#05	;use color for verifying ground at the moment
+     91  1068		       d0 12		      bne	w_jump_verification_done
+     92  106a							;check falling flag
+     93  106a		       a9 04		      lda	#%00000100
+     94  106c		       25 20		      and	$20
+     95  106e		       c9 04		      cmp	#%00000100
+     96  1070		       d0 0a		      bne	w_jump_verification_done
+     97  1072							;set up jump flag and initial vertical speed
+     98  1072		       a9 fb		      lda	#%11111011
+     99  1074		       25 20		      and	$20
+    100  1076		       85 20		      sta	$20
+    101  1078		       a9 02		      lda	#2
+    102  107a		       85 23		      sta	$23
+    103  107c				   w_jump_verification_done
+    104  107c		       4c 8f 10 	      jmp	vertical_movement
+    105  107f
+    106  107f				   s_down
+    107  107f							;used for reset
+    108  107f		       a9 00		      lda	#0
+    109  1081		       85 21		      sta	$21
+    110  1083		       a9 0c		      lda	#12
+    111  1085		       85 22		      sta	$22
+    112  1087		       a9 04		      lda	#%00000100
+    113  1089		       85 20		      sta	$20	;reset jump flag
+    114  108b		       a9 00		      lda	#0
+    115  108d		       85 23		      sta	$23
+    116  108f
+    117  108f
+    118  108f				   vertical_movement
+    119  108f				   revise_vertical_speed
+    120  108f							;   check is jumping
+    121  108f		       a9 04		      lda	#%00000100
+    122  1091		       25 20		      and	$20
+    123  1093		       c9 04		      cmp	#%00000100
+    124  1095		       f0 48		      beq	revise_vertical_falling_speed
+    125  1097							;case jumping
+    126  1097		       a5 23		      lda	$23
+    127  1099		       c9 00		      cmp	#0	;change to fall when vertical spped is 0
+    128  109b		       f0 35		      beq	stop_jumping
+    129  109d		       a5 22		      lda	$22
+    130  109f		       c9 00		      cmp	#0	;change to fall when at top border
+    131  10a1		       f0 2f		      beq	stop_jumping
+    132  10a3
+    133  10a3				   on_top_checking
+    134  10a3		       a2 00		      ldx	#0
+    135  10a5				   on_top_checking_loop
+    136  10a5		       4c c7 10 	      jmp	normal_jumping
+    137  10a8		       e4 23		      cpx	$23
+    138  10aa		       f0 1b		      beq	normal_jumping
+    139  10ac							;update y for shift on monitor
+    140  10ac		       86 00		      stx	$0
+    141  10ae		       a5 22		      lda	$22
+    142  10b0		       e5 00		      sbc	$0
+    143  10b2		       85 01		      sta	$1
+    144  10b4							;x for shift on monitor
+    145  10b4		       a5 21		      lda	$21
+    146  10b6		       85 00		      sta	$0
+    147  10b8		       20 9a 11 	      jsr	shift_on_monitor
+    148  10bb
+    149  10bb		       a0 00		      ldy	#$0
+    150  10bd		       b1 04		      lda	($04),y
+    151  10bf		       c9 01		      cmp	#01	;use color for verifying ground at the moment
+    152  10c1		       d0 09		      bne	crashed_jumping
+    153  10c3		       e8		      inx
+    154  10c4		       4c a5 10 	      jmp	on_top_checking_loop
+    155  10c7				   normal_jumping
+    156  10c7		       c6 23		      dec	$23
+    157  10c9		       4c dc 10 	      jmp	revise_vertical_jumping_done
+    158  10cc				   crashed_jumping
+    159  10cc		       ca		      dex		;can only jump to the squre next to obstacle
+    160  10cd		       86 23		      stx	$23
+    161  10cf		       4c dc 10 	      jmp	revise_vertical_jumping_done
+    162  10d2				   stop_jumping
+    163  10d2		       a9 04		      lda	#%00000100
+    164  10d4		       05 20		      ora	$20
+    165  10d6		       85 20		      sta	$20
+    166  10d8		       a9 00		      lda	#0
+    167  10da		       85 23		      sta	$23
+    168  10dc				   revise_vertical_jumping_done
+    169  10dc		       4c df 10 	      jmp	main_update_vertical_shift
+    170  10df				   revise_vertical_falling_speed
+    171  10df
+    172  10df				   main_update_vertical_shift
+    173  10df							;is vertical speed 0?
+    174  10df		       a5 23		      lda	$23
+    175  10e1		       c9 00		      cmp	#0
+    176  10e3		       f0 19		      beq	main_update_shift_end
+    177  10e5							;falling or jumping?
+    178  10e5		       a9 04		      lda	#%00000100
+    179  10e7		       25 20		      and	$20
+    180  10e9		       c9 00		      cmp	#%00000000
+    181  10eb		       d0 0a		      bne	update_vertical_shift_falling
+    182  10ed							;case jumping
+    183  10ed		       18		      clc
+    184  10ee		       a5 22		      lda	$22
+    185  10f0		       e5 23		      sbc	$23
+    186  10f2		       85 22		      sta	$22
+    187  10f4		       4c fe 10 	      jmp	main_update_shift_end
+    188  10f7				   update_vertical_shift_falling
+    189  10f7		       18		      clc
+    190  10f8		       a5 23		      lda	$23
+    191  10fa		       65 22		      adc	$22
+    192  10fc		       85 22		      sta	$22
+    193  10fe
+    194  10fe				   main_update_shift_end
+    195  10fe		       20 8e 11 	      jsr	player_location
+    196  1101		       a0 00		      ldy	#$0
+    197  1103		       a9 01		      lda	#01	;a squre
+    198  1105		       91 02		      sta	($02),y
+    199  1107		       a0 16		      ldy	#$16
+    200  1109		       91 02		      sta	($02),y
+    201  110b
+    202  110b		       a9 02		      lda	#02	;color red
+    203  110d		       a0 00		      ldy	#$0
+    204  110f		       91 04		      sta	($04),y
+    205  1111		       a0 16		      ldy	#$16
+    206  1113		       91 04		      sta	($04),y
+    207  1115
+    208  1115		       20 fc 11 	      jsr	interval_start
+    209  1118		       4c 10 10 	      jmp	main_loop
+    210  111b
+    211  111b							;=====================================
+    212  111b							;    tempordary code for jumping and falling tests
+    213  111b							;=====================================
+    214  111b				   startup
+    215  111b
+    216  111b							;charcterset to from 1c00
+    217  111b		       a9 ff		      lda	#255
+    218  111d		       8d 05 90 	      sta	$9005
+    219  1120
+    220  1120		       20 71 11 	      jsr	store_char
+    221  1123		       20 e1 11 	      jsr	clear_screen
+    222  1126
+    223  1126
+    224  1126
+    225  1126				   draw_an_obstacle
+    226  1126		       a9 0c		      lda	#12
+    227  1128		       85 00		      sta	$00
+    228  112a		       a9 0a		      lda	#10
+    229  112c		       85 01		      sta	$01
+    230  112e		       20 9a 11 	      jsr	shift_on_monitor
+    231  1131		       a0 00		      ldy	#$0
+    232  1133		       a9 01		      lda	#01	;a squre
+    233  1135		       91 02		      sta	($02),y
+    234  1137		       a9 06		      lda	#06	;color orange
+    235  1139		       a0 00		      ldy	#$0
+    236  113b		       91 04		      sta	($04),y
+    237  113d		       a0 16		      ldy	#$16
+    238  113f		       91 04		      sta	($04),y
+    239  1141
+    240  1141				   drawing_ground
+    241  1141		       a2 00		      ldx	#0
+    242  1143				   drawing_ground_loop
+    243  1143		       a9 0e		      lda	#14
+    244  1145		       85 01		      sta	$01
+    245  1147		       e0 14		      cpx	#20
+    246  1149		       f0 15		      beq	drawing_ground_done
+    247  114b		       86 00		      stx	$00
+    248  114d		       20 9a 11 	      jsr	shift_on_monitor
+    249  1150		       a0 00		      ldy	#$0
+    250  1152		       a9 01		      lda	#01	;a squre
+    251  1154		       91 02		      sta	($02),y
+    252  1156		       a9 05		      lda	#05	;color green
+    253  1158		       a0 00		      ldy	#$0
+    254  115a		       91 04		      sta	($04),y
+    255  115c		       e8		      inx
+    256  115d		       4c 43 11 	      jmp	drawing_ground_loop
+    257  1160				   drawing_ground_done
+    258  1160
+    259  1160							;start location
+    260  1160		       a9 0c		      lda	#12
+    261  1162		       85 21		      sta	$21
+    262  1164		       a9 0c		      lda	#12
+    263  1166		       85 22		      sta	$22
+    264  1168		       a9 04		      lda	#%00000100
+    265  116a		       85 20		      sta	$20
+    266  116c		       a9 00		      lda	#0
+    267  116e		       85 23		      sta	$23
+    268  1170		       60		      rts
+    269  1171
+    270  1171							;============================
+    271  1171				   store_char
+    272  1171		       a2 00		      ldx	#$0
+    273  1173		       a9 00		      lda	#$0
+    274  1175				   char1
+    275  1175		       e0 08		      cpx	#8
+    276  1177		       f0 07		      beq	char2
+    277  1179		       9d 00 1c 	      sta	$1c00,x
+    278  117c		       e8		      inx
+    279  117d		       4c 75 11 	      jmp	char1
+    280  1180				   char2
+    281  1180		       a9 ff		      lda	#$ff
+    282  1182		       e0 10		      cpx	#16
+    283  1184		       f0 07		      beq	store_char_end
+    284  1186		       9d 00 1c 	      sta	$1c00,x
+    285  1189		       e8		      inx
+    286  118a		       4c 80 11 	      jmp	char2
+    287  118d				   store_char_end
+    288  118d		       60		      rts
+    289  118e
+    290  118e							;=====================================
+    291  118e							;player location
+    292  118e				   player_location
+    293  118e		       a5 21		      lda	$21
+    294  1190		       85 00		      sta	$00
+    295  1192		       a5 22		      lda	$22
+    296  1194		       85 01		      sta	$01
+    297  1196		       20 9a 11 	      jsr	shift_on_monitor
+    298  1199		       60		      rts
+    299  119a
+    300  119a
+    301  119a							;updated shift on monitor
+    302  119a							;take take y@[01],x@[00],store to [01][00] as shift,(small endian)
+    303  119a							;[03][02] as character movment, [05][04]as screen color movment
+    304  119a							;take take y@[22],x@[21],store to [01][00] as shift,
+    305  119a							;[03][02] as character movment, [05][04]as screen color movment
+    306  119a				   shift_on_monitor
+    307  119a		       a5 00		      lda	$00
+    308  119c		       85 03		      sta	$03	;->xto[3]
+    309  119e		       a5 01		      lda	$01
+    310  11a0		       85 04		      sta	$04	; -> y to [4]
+    311  11a2		       a9 00		      lda	#$00
+    312  11a4		       85 01		      sta	$01
+    313  11a6		       85 00		      sta	$00
+    314  11a8				   som_loop
+    315  11a8				   som_y
+    316  11a8		       a5 04		      lda	$04
+    317  11aa		       c9 00		      cmp	#$0
+    318  11ac		       f0 12		      beq	som_x
+    319  11ae		       18		      clc
+    320  11af		       a9 16		      lda	#22
+    321  11b1		       65 00		      adc	$0
+    322  11b3		       85 00		      sta	$0
+    323  11b5
+    324  11b5		       a5 01		      lda	$01
+    325  11b7		       69 00		      adc	#$0
+    326  11b9		       85 01		      sta	$01
+    327  11bb
+    328  11bb		       c6 04		      dec	$04
+    329  11bd		       4c a8 11 	      jmp	som_y
+    330  11c0				   som_x
+    331  11c0		       18		      clc
+    332  11c1		       a5 03		      lda	$03
+    333  11c3		       65 00		      adc	$0
+    334  11c5		       85 00		      sta	$0
+    335  11c7		       a5 01		      lda	$01
+    336  11c9		       69 00		      adc	#$0
+    337  11cb		       85 01		      sta	$01
+    338  11cd
+    339  11cd							;calculate movement of characters
+    340  11cd							;not out of border is assumend
+    341  11cd							;last 2 digit always 0
+    342  11cd		       a5 00		      lda	$00
+    343  11cf		       85 02		      sta	$02
+    344  11d1		       85 04		      sta	$04
+    345  11d3		       18		      clc
+    346  11d4
+    347  11d4		       a9 1e		      lda	#$1e
+    348  11d6		       65 01		      adc	$01
+    349  11d8		       85 03		      sta	$03
+    350  11da
+    351  11da		       a9 96		      lda	#$96
+    352  11dc		       65 01		      adc	$01
+    353  11de		       85 05		      sta	$05
+    354  11e0		       60		      rts
+    355  11e1
+    356  11e1							;function:clear screen
+    357  11e1				   clear_screen
+    358  11e1		       a9 00		      lda	#0
+    359  11e3		       a2 00		      ldx	#0
+    360  11e5				   clear_char
+    361  11e5		       9d 00 1e 	      STA	$1e00,X
+    362  11e8		       9d 00 1f 	      STA	$1f00,X
+    363  11eb		       e8		      INX
+    364  11ec		       d0 f7		      BNE	clear_char
+    365  11ee
+    366  11ee		       a9 01		      lda	#01
+    367  11f0		       a2 00		      ldx	#0
+    368  11f2				   white_color
+    369  11f2		       9d 00 96 	      STA	$9600,X
+    370  11f5		       9d ff 96 	      STA	$96ff,x
+    371  11f8		       e8		      INX
+    372  11f9		       d0 f7		      BNE	white_color
+    373  11fb		       60		      rts
+    374  11fc							;function:clear screen end
+    375  11fc
+    376  11fc							;loopoverdelay255
+    377  11fc				   interval_start
+    378  11fc		       a9 00		      lda	#$0
+    379  11fe		       85 11		      sta	$11
+    380  1200				   interval_loop
+    381  1200		       a5 11		      lda	$11
+    382  1202		       c9 0a		      cmp	#$0a
+    383  1204		       f0 08		      beq	interval_done
+    384  1206		       e6 11		      inc	$11
+    385  1208		       20 0f 12 	      jsr	delay255_start
+    386  120b		       4c 00 12 	      jmp	interval_loop
+    387  120e				   interval_done
+    388  120e		       60		      rts
+    389  120f							;delay loop
+    390  120f				   delay255_start
+    391  120f		       a9 00		      lda	#$0
+    392  1211		       85 01		      sta	$01
+    393  1213				   delay255_loop
+    394  1213		       a5 01		      lda	$01
+    395  1215		       c9 ff		      cmp	#$FF
+    396  1217		       f0 05		      beq	delay255_done
+    397  1219		       e6 01		      inc	$01
+    398  121b		       4c 13 12 	      jmp	delay255_loop
+    399  121e				   delay255_done
+    400  121e		       60		      rts

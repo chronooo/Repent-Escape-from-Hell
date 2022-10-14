@@ -41,11 +41,8 @@ main_loop
     sta     ($02),y
     sta     ($04),y
 
-
     lda     $00C5           ; loads the current pressed key from memory
 keyboard_triggers
-    cmp     #64 ;if nothing held down
-    beq     case_idle
     cmp     #17 ; if A is pressed
     beq     a_left
     cmp     #18 ; if D is pressed
@@ -56,6 +53,7 @@ keyboard_triggers
     beq     s_down
     cmp     #33
     beq     exit_prg; if z is pressed
+    jmp     case_idle
 exit_prg
     rts
 
@@ -100,7 +98,7 @@ w_jump
     lda     #%11111011
     and     $20
     sta     $20
-    lda     #3
+    lda     #2
     sta     $23
 w_jump_verification_done
     jmp     vertical_movement
@@ -118,7 +116,6 @@ s_down
 
 
 vertical_movement
-
 revise_vertical_speed
     ;   check is jumping
     lda     #%00000100
@@ -136,8 +133,9 @@ revise_vertical_speed
 on_top_checking
     ldx     #0
 on_top_checking_loop
+    jmp     normal_jumping
     cpx     $23
-    beq     revise_vertical_jumping_done
+    beq     normal_jumping
     ;update y for shift on monitor
     stx     $0
     lda     $22
@@ -154,18 +152,18 @@ on_top_checking_loop
     bne     crashed_jumping
     inx
     jmp     on_top_checking_loop
+normal_jumping
+    dec     $23
+    jmp     revise_vertical_jumping_done
 crashed_jumping
     dex     ;can only jump to the squre next to obstacle
     stx     $23
-normal_jumping
-    lda     #$01
-    sbc     $23
-    sta     $23
     jmp     revise_vertical_jumping_done
 stop_jumping
     lda     #%00000100
     ora     $20
-    lda     #$0
+    sta     $20
+    lda     #0
     sta     $23
 revise_vertical_jumping_done
     jmp     main_update_vertical_shift
@@ -182,10 +180,13 @@ main_update_vertical_shift
     cmp     #%00000000
     bne     update_vertical_shift_falling
 ;case jumping
-    lda     $23
-    sbc     $22
+    clc
+    lda     $22
+    sbc     $23
     sta     $22
+    jmp     main_update_shift_end
 update_vertical_shift_falling
+    clc
     lda     $23
     adc     $22
     sta     $22
