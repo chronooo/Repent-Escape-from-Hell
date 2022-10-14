@@ -98,7 +98,7 @@ w_jump
     lda     #%11111011
     and     $20
     sta     $20
-    lda     #2
+    lda     #3
     sta     $23
 w_jump_verification_done
     jmp     vertical_movement
@@ -131,12 +131,14 @@ revise_vertical_speed
     beq     stop_jumping
 
 on_top_checking
-    ldx     #0
+    ldx     #$0
 on_top_checking_loop
     jmp     normal_jumping
+    ;       things from now to b4 crashed jumping will be handled in collision test stage later
     cpx     $23
     beq     normal_jumping
     ;update y for shift on monitor
+    sec
     stx     $0
     lda     $22
     sbc     $0
@@ -156,7 +158,7 @@ normal_jumping
     dec     $23
     jmp     revise_vertical_jumping_done
 crashed_jumping
-    dex     ;can only jump to the squre next to obstacle
+    ;dex     ;can only jump to the squre next to obstacle
     stx     $23
     jmp     revise_vertical_jumping_done
 stop_jumping
@@ -180,7 +182,7 @@ main_update_vertical_shift
     cmp     #%00000000
     bne     update_vertical_shift_falling
 ;case jumping
-    clc
+    sec
     lda     $22
     sbc     $23
     sta     $22
