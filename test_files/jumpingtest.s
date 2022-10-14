@@ -3,8 +3,7 @@
 ;   jumpting test developed based on moving test.
 ;   Usage:
         ;W: jump to air without crashing with anything
-        ;S: crash to a virual celing 2 squares above
-            ;how finish collision?
+        ; can only jump on green ground
         ;Z: exit
 
 ;   temporarily zeropage usage,
