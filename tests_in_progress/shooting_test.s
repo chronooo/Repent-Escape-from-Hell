@@ -133,11 +133,12 @@ shoot ; rendering and removing projectile shot
     ; for 3-5 frames not sure yet in a loop
     ; each iteration of loop overwrite previous position and render it in
     ; new position
-    /*jsr curposition ; get current position
-    lda #$1e 
-    adc $a
-    sta $b ; storing screen address in b 
-    ;lda */
+    jsr     curposition ; get current position stored in $a
+    lda     #$96 ; color ram high order
+    adc     $a  ; player position lower order
+    sta     $b ; storing screen address in b 
+    lda     #$00
+    sta     $9600
     lda     #02 
     sta     $1e00
 
