@@ -4,6 +4,9 @@
 
 CHROUT =    $ffd2
 CHRIN  =    $ffcf
+;   ZERO PAGE MACROS
+X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
+Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 
     org     $1001
     dc.w    stubend
@@ -13,6 +16,11 @@ stubend
     dc.w    0
 
 start
+    ;       setting init values of player x y coords
+    LDA     #0
+    STA     X_POS
+    LDA     #0
+    STA     Y_POS
 
 ;   Switching character set pointer to 0x1c00:
     lda     #255
@@ -60,6 +68,12 @@ draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" chara
     BNE     draw_ground
 
 loop
+    jsr     coord_to_index      ; get index into map array inside X_reg
+    lda     #0                  ; store 0 (whitespace) in where the player currently is,
+    sta     $1b04,X             ; in case the player position changes. If it doesn't,
+                                ; that is okay, since we will restore the same value in update_next_frame.
+
+            ; GET PLAYER INPUT!
     lda     $00C5       ; loads the current pressed key from memory
     cmp     #64         ; if nothing held down
     beq     update_next_frame
@@ -80,30 +94,55 @@ loop
 exit_prg
     rts
 
-        ;   TODO: integrate movement code into here
 a_left
-    lda     #00             ; prints character at 0x1c00
+    dec     X_POS               ; X_POS -= 1
     jmp     key_pressed
 d_right
-    lda     #01             ; prints character at 0x1c10
+    inc     X_POS               ; X_POS += 1
     jmp     key_pressed
 w_top
-    lda     #02             ; prints character at 0x1c20
+    dec     Y_POS               ; Y_POS -= 1
     jmp     key_pressed
 s_down
-    lda     #03             ; prints character at 0x1c30
-    jmp     key_pressed
-
+    inc     Y_POS               ; Y_POS += 1 ; no jump here as we just fall through..
 key_pressed
-    STA     $1bd6           ; stores the character selected to 
-                            ; first byte of map array.... for now....
+    ;   need to fixup the x and y values in case we went out of bounds:
+    ;   we do NOT need to check both x and y for out of bounds, 
+    ;   since we know only one case can be satisfied at a time. (we only check one keypress per loop)
+
+    ;   fixing x:   bound is (0 <= X_POS <= 20)
+    lda     X_POS           ; load X_POS into A_reg (this sets the negative flag if it was negative!)
+    bmi     neg_x           ; branch if X_POS is negative, i.e X_POS = FF because we just did X_POS = 0 - 1
+    cmp     #21             ; cmp X_POS to 21; if it is equal, then we need to do X_POS--
+    beq     pos_x
+
+    ;  fixing y:    bound is (0 <= Y_POS <= 11)
+    lda     Y_POS           ; load Y_POS into A_reg (this sets the negative flag if it was negative!
+    bmi     neg_y           ; branch if Y_POS is negative, i.e Y_POS = FF because we just did Y_POS = 0 - 1
+    cmp     #12             ; cmp Y_POS to 12 ; if it is equal, then we need to do Y_POS--
+    beq     pos_y
+    jmp     update_next_frame   ; if our code reached here, means everything is in bounds, continue execution.    
+pos_y
+    dec     Y_POS
+    jmp     update_next_frame 
+neg_y       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
+    inc     Y_POS
+    jmp     update_next_frame   
+pos_x
+    dec     X_POS
+    jmp     update_next_frame 
+neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
+    inc     X_POS           ; no jmp here, just fall through.
+
 
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
 update_next_frame
 
-
-
+    ; update player pos on map depending on the x, y stored in zero page:
+    jsr     coord_to_index  ; compute player pos offset in map array (returned in X_reg)
+    lda     #2              ; player char ptr into A_reg
+    sta     $1b04,X         ; store it at the player's position
 
 
 
@@ -126,7 +165,43 @@ drawloop
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
+
+    jsr     waste_time
+    jsr     waste_time
+    jsr     waste_time
+    jsr     waste_time
+    jsr     waste_time
+    jsr     waste_time
     jmp     loop            ; go back to very top of while loop
+
+
+coord_to_index              ; routine to compute offset from $1b04 from x, y value (array index)
+                            ; formula is index(x,y) = 21y + x 
+                            ; stores the computed index inside X_reg (!)
+    LDX     Y_POS           ; load Y_POS into X, use as loop counter when adding
+    LDA     #0
+x_mult_loop                 ; loop to compute A_reg = 21 * X
+    cpx     #0              ; if x is 0, quit multiplication loop
+    beq     add_x           
+    clc                     ; clear carry before add
+    adc     #21             ; add 21
+    DEX                     ; decrement X
+    jmp     x_mult_loop     ; go to top of loop
+add_x
+    clc                     ; clc before add
+    adc     X_POS           ; A_reg += Y_POS
+    tax                     ; return in X for convenience 
+                            ; (all the times we want to use it, we use it as an offset (ex: sta 00,X)
+    rts                     ; return from routine
+
+; routine to waste time. changes the Y register.
+waste_time
+    ldy     $0 
+waste_time_loop             ; waste time routine
+    INY
+    CPY     $FF             ; waste time by counting up to 255 in Y reg
+    BNE     waste_time_loop
+    rts
 
 /*
 ;   END OF CODE, START OF DATA
