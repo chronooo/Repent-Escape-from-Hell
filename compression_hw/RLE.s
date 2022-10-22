@@ -3,7 +3,7 @@
 ; KERNAL [sic] routines
 CHROUT =    $ffd2
 CHRIN  =    $ffcf
-
+W =         $20
     org     $1001
 
     dc.w    stubend
@@ -78,9 +78,9 @@ exit_prg
     rts
 
 screen_init
-    lda     #$00 
+    lda     #$02 
     ldx     #0
-color_ram1 ; fill color ram 0x9600 to 0x96ff with black (00)
+color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
     STA     $9600,X
     INX
     cpx     #255
@@ -100,23 +100,21 @@ color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
 
     org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
 
-
-    HEX 20 60 12 01 05 01 10 01 05 01 0E 01 14 01 3A 01
-    HEX 20 1E 05 01 13 01 03 01 01 01 10 01 05 01 20 01
-    HEX 05 01 12 01 0F 01 0D 01 20 01 08 01 05 01 0C 01
-    HEX 0C 01 20 BA 10 01 12 01 05 01 13 02 20 01 21 01  
-    HEX 20 A7
-
+    HEX 20 60 12 01 05 01 10 01 05 01 0E 01 14 01 3A 01 
+    HEX 20 1E 01 01 0E 01 20 01 05 01 13 01 03 01 01 01 
+    HEX 10 01 05 01 20 01 06 01 12 01 0F 01 0D 01 20 01 
+    HEX 08 01 05 01 0C 01 0C 01 20 BA 10 01 12 01 05 01 
+    HEX 13 01 13 01 20 01 1A 01 20 A7 00
 
     ;RLE
     ;Hex value (HH) is how many chars, Following letter/value is what is on the screen
-    ;$60W $01R $01E $01P $01E $01N $01T $01: $1EW $01E $01S $01C $01A $01P $01E
-    ;$01W $01F $01R $01O $01M $01W $01H $01E $01L $01L $BAW $01P $01R $01E $01S
-    ;$01S $01W $01Z $A7W
+    ;$60 20 $01 12 $01 05 $01 10 $01 05 $01 0E $01 14 $01 3A $1E 20 $01 05 $01 13 $01 03 $01 01 $01 10 $01 05
+    ;$01 20 $01 06 $01 12 $01 0F $01 0D $01 20 $01 08 $01 05 $01 0C $01 0C $BA 20 $01 10 $01 12 $01 05 $01 13
+    ;$01 13 $01 20 $01 1A $A7 20
     ;Corresponding screen code for each letter
     ;A'=01 C'=03 E'=05 F'=06 
     ;H'=08 L'=0C
     ;M'=0D N'=0E O'=0F P'=10 R'=12 
-    ;S'=13 T'=14 W(whitespace)=20
+    ;S'=13 T'=14 W(whitespace)=20 Z= 1A
     ; :'=3A
     
