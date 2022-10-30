@@ -1,3 +1,5 @@
+Text view of "exotitle" extracted through xxd exotitle
+
 8000 ae40 8204 c157 b000 0000 0022 6806
 e000 0000 0008 806c e004 0220 0bc0 ea12
 0510 710e 143a de6a 010e f605 1303 36ef
