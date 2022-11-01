@@ -25,8 +25,9 @@ rle_decode
     LDY     #1              
     sty     $23             ; y overflow flag to 1 in the beginning
     LDY     #0              ; use Y as counter for the write loop
-
+    PHA
 decode_loop
+    PLA
     LDX     $22             ; load x into zp location for later
     LDA     $1a00,X         ; LDA will turn zero flag on if it loaded zero (termination)
     beq     loop            ; if reached termination, exit
@@ -68,10 +69,8 @@ y_overflow_set  ;set y overflow to true
 
 loop
     lda     $00C5
-    cmp     #64
-    beq     loop
     cmp     #33 ; Z in current key table
-    beq     exit_prg
+    bne     loop
 
 
 exit_prg
