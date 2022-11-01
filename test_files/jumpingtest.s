@@ -130,9 +130,8 @@ revise_vertical_speed
     beq     stop_jumping
 
 on_top_checking
-    ldx     #$0
+    ldx     #$1
 on_top_checking_loop
-    jmp     normal_jumping
     ;       things from now to b4 crashed jumping will be handled in collision test stage later
     cpx     $23
     beq     normal_jumping
@@ -150,14 +149,16 @@ on_top_checking_loop
     ldy     #$0
     lda     ($04),y
     cmp     #01     ;use color for verifying ground at the moment
-    bne     crashed_jumping
+    bne     crashed_jumgfping
     inx
     jmp     on_top_checking_loop
 normal_jumping
     dec     $23
     jmp     revise_vertical_jumping_done
 crashed_jumping
-    ;dex     ;can only jump to the squre next to obstacle
+    cpx     #$1
+    beq     stop_jumping
+crashed_after_jump
     stx     $23
     jmp     revise_vertical_jumping_done
 stop_jumping

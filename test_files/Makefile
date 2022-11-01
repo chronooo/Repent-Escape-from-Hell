@@ -4,6 +4,6 @@ DASM	=  'C:\run\dasm.exe'
 
 all:					jumpingtest.prg
 
-shift_on_monitor.prg:				shift_on_monitor.s
-character_frame_switching_test.prg:		character_frame_switching_test.
+movement_test.prg:				movement_test.s
+character_frame_switching_test.prg:		character_frame_switching_test.s
 jumpingtest.prg:		jumpingtest.s
