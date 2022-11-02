@@ -1,7 +1,10 @@
 Text view of "exotitle" extracted through xxd exotitle
+exotitle is the compressed binary you get from compressing the "title" binary 
+with ./exomizer raw -b title -o exotitle 
+-b is the flag to set it to crunch it backwards 
 
-8000 ae40 8204 c157 b000 0000 0022 6806
-e000 0000 0008 806c e004 0220 0bc0 ea12
-0510 710e 143a de6a 010e f605 1303 36ef
-0612 0f0d 5e08 bd0c 0b80 6110 2fa1 13a0
-1a5f 0000 0080 0001
+0100 7c2f 7c2e 0e14 3ad7 1d0e aadb 0301
+10fc 5d06 120f 0d7f 0805 0cbd 6080 1012
+051d 1325 1a7d 2010 0200 0002 04a0 24e0
+0aa0 0400 00c0 4a02 6a00 0000 0000 b057
+c144 48ae 0080 
