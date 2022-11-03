@@ -18,10 +18,9 @@ DASM=dasm
 										$(DASM) $< -o$@ -l$*.lst
 endif
 
-all: 		rle_custom.prg
+all: 									specific_RLE.prg
 
 clean:
 	- rm -f *.prg *.lst 
 
-RLE.prg:	RLE.s
-rle_custom.prg:rle_custom.s
+specific_RLE.prg:						specific_RLE.s
