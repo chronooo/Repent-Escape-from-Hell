@@ -69,7 +69,7 @@ DONT_REUSE_OFFSET = 0
  ENDIF
 ; -------------------------------------------------------------------
 ; if decrunching forwards then the following line must be uncommented.
-;DECRUNCH_FORWARDS = 1
+DECRUNCH_FORWARDS = 1
  IFNCONST DECRUNCH_FORWARDS
 DECRUNCH_FORWARDS = 0
  ENDIF

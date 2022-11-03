@@ -19,6 +19,7 @@ start
     ;setup screen
     jsr     screen_init
     jsr     exod_get_crunched_byte ;
+    jsr     loop 
     ;exod_get_crunched_byte is how it gets the information
     ;exod_zp_bitbuf is the load address
     ;try recrunching code with mem to set a load address
@@ -30,7 +31,7 @@ start
     the return address iirc*/
     
 ; if decrunching forwards then the following line must be uncommented.
-;DECRUNCH_FORWARDS = 1
+DECRUNCH_FORWARDS = 1
  IFNCONST DECRUNCH_FORWARDS
 DECRUNCH_FORWARDS = 0
  ENDIF
@@ -97,10 +98,21 @@ color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
     ldx     #0
     rts
 
+loop
+    lda     $00C5
+    cmp     #64
+    beq     loop
+    cmp     #33 ; Z in current key table
+    beq     exit_prg
+    jmp     loop
+
+exit_prg
+    rts
+
     org     $1a00 ; Exomizer compressed screen
 
-    HEX 01 00 7c 2f 7c 2e 0e 14 3a d7 1d 0e aa db 03 01
-    HEX 10 fc 5d 06 12 0f 0d 7f 08 05 0c bd 60 80 10 12
-    HEX 05 1d 13 25 1a 7d 20 10 02 00 00 02 04 a0 24 e0
-    HEX 0a a0 04 00 00 c0 4a 02 6a 00 00 00 00 00 b0 57
-    HEX c1 44 48 ae 00 80       
+    HEX 00 1e 20 20 80 00 ae 40 82 04 c1 57 b0 00 00 00
+    HEX 00 22 68 06 e0 00 00 00 00 08 80 6c e0 04 02 20
+    HEX 0b a0 ea 12 05 10 71 0e 14 3a de 6a 01 0e f6 05
+    HEX 13 03 36 ef 06 12 0f 0d 5e 08 bd 0c 0b 80 61 10
+    HEX 2f a1 13 a0 1a 5f 00 00 00 80 00 01    
