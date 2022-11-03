@@ -107,19 +107,6 @@ color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
 
     org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
 
-    HEX 20 60 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 ;[]*$96,REPENT:[]*$1E[]AN[]E
-    HEX 13 03 01 10 05 60 06 12 0F 0D 60 08 05 0C 0C ;SCAPE[]FROM[]HELL
-    HEX 20 BA 10 12 05 13 13 60 1A 20 A7 00 ;[]*$BA,PRESS[]Z[]*$A7
-
-    ;RLE
-    ;Hex value (HH) is how many chars, Following letter/value is what is on the screen
-    ;$60 20 $01 12 $01 05 $01 10 $01 05 $01 0E $01 14 $01 3A $1E 20 $01 05 $01 13 $01 03 $01 01 $01 10 $01 05
-    ;$01 20 $01 06 $01 12 $01 0F $01 0D $01 20 $01 08 $01 05 $01 0C $01 0C $BA 20 $01 10 $01 12 $01 05 $01 13
-    ;$01 13 $01 20 $01 1A $A7 20
-    ;Corresponding screen code for each letter
-    ;A'=01 C'=03 E'=05 F'=06
-    ;H'=08 L'=0C
-    ;M'=0D N'=0E O'=0F P'=10 R'=12
-    ;S'=13 T'=14 W(whitespace)=20 Z= 1A
-    ; :'=3A
-
+    HEX 20 60 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 ;[]*$96,REPENT:[]*$1E[]AN[]E
+    HEX 03 01 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA ;SCAPE[]FROM[]HELL
+    HEX 10 12 05 13 13 60 1A 20 A7 00 ;[]*$BA,PRESS[]Z[]*$A7

@@ -96,6 +96,6 @@ whitescreen2
 
     org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
 
-    HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 ;[]*$96,REPENT:[]*$1E[]AN[]E
-    HEX 13 03 01 10 05 60 06 12 0F 0D 60 08 05 0C 0C ;SCAPE[]FROM[]HELL
-    HEX 20 BA 10 12 05 13 13 60 1A 00 ;[]*$BA,PRESS[]Z[]*$A7
+    HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 03 01 
+    HEX 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA 10 12 
+    HEX 05 13 13 60 1A 00 
