@@ -16,7 +16,6 @@ Data compression ratio: 10.541
 .prg size ratio:        1.294
 
 Giving us a compression ratio of 506/48 = 10.541
-The code for the zx0 compression can be found at these locations
 
 Generic RLE compression:
 --
