@@ -29,11 +29,11 @@ rle_decode
 decode_loop
     PLA
     LDX     $22             ; load x into zp location for later
-    LDA     $1a00,X         ; LDA will turn zero flag on if it loaded zero (termination)
+    LDA     data_label,X         ; LDA will turn zero flag on if it loaded zero (termination)
     beq     loop            ; if reached termination, exit
     PHA                     ; A to stack
     INX     ; x++
-    LDA     $1a00,X         ; get the loop amount in A
+    LDA     data_label,X         ; get the loop amount in A
     INX     ; increment X in anticipation of next loop
     stx     $22             ; store x into zp location for later
     TAX     ; how many time to repeat char into X
@@ -97,23 +97,11 @@ color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
     ldx     #0
     rts
 
-    org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
-
+data_label
     HEX 20 60 12 01 05 01 10 01 05 01 0E 01 14 01 3A 01 
     HEX 20 1E 01 01 0E 01 20 01 05 01 13 01 03 01 01 01 
     HEX 10 01 05 01 20 01 06 01 12 01 0F 01 0D 01 20 01 
     HEX 08 01 05 01 0C 01 0C 01 20 BA 10 01 12 01 05 01 
     HEX 13 01 13 01 20 01 1A 01 20 A7 00
 
-    ;RLE
-    ;Hex value (HH) is how many chars, Following letter/value is what is on the screen
-    ;$60 20 $01 12 $01 05 $01 10 $01 05 $01 0E $01 14 $01 3A $1E 20 $01 05 $01 13 $01 03 $01 01 $01 10 $01 05
-    ;$01 20 $01 06 $01 12 $01 0F $01 0D $01 20 $01 08 $01 05 $01 0C $01 0C $BA 20 $01 10 $01 12 $01 05 $01 13
-    ;$01 13 $01 20 $01 1A $A7 20
-    ;Corresponding screen code for each letter
-    ;A'=01 C'=03 E'=05 F'=06 
-    ;H'=08 L'=0C
-    ;M'=0D N'=0E O'=0F P'=10 R'=12 
-    ;S'=13 T'=14 W(whitespace)=20 Z= 1A
-    ; :'=3A
-    
+

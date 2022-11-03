@@ -20,7 +20,7 @@ bitr            equ ZP+6
 elias_h         equ ZP+7
 pntr            equ ZP+8
 
-comp_data = $1a00 
+comp_data = zx0screen 
 out_addr = $1e00
 
             ; Initial values for offset, source, destination and bitr

@@ -1,54 +1,56 @@
 Original 
 -- 
 
-Our original title screen contained a total of 506 bytes. 
-The original code for our title screen can be found in
-/599.82-retro-game/compression_hw/originaltitle/titlescreentest.s
+Our original uncompressed title screen contained a total of 506 bytes. (the default screen memory size)
 
-Below is a text view of the original binary data
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20	
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-12 05 10 05 0e 14 3a 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 01 0e 20	05 13 03 01 10 05 20 06		
-12 0f 0d 20 08 05 0c 0c	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20	
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 10 12 05 13 13 20	1a 20 20 20 20 20 20 20	
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 20 20 20 20 20 20		
-20 20 20 20 20 20 20 20	20 20 
+Original data size:     506 bytes
+Original .prg size:     347 bytes
+
 
 zx0 compression 
 --
 
-The zx0 managed to compress our 506 bytes down to 48.
+Compressed data size:   48 bytes
+.prg size:              268 bytes
+Data compression ratio: 10.541
+.prg size ratio:        1.294
+
 Giving us a compression ratio of 506/48 = 10.541
 The code for the zx0 compression can be found at these locations
-599.82-retro-game/compression_hw/zx0_titlehw2/zx0Compress.s
-599.82-retro-game/compression_hw/zx0_titlehw2/zx0-6502.s
 
-The compressed data looks like this
-2f 20 fc f5 12 05 10 05 0e 14 3a 53 ec 82 01 0e
-88 05 13 03 01 b0 20 06 12 0f 0d a1 08 05 0c 0c
-3f 01 a8 a0 10 12 05 13 cb 20 1a 20 aa 9a aa a0
+Generic RLE compression:
+--
+
+Compressed data size:   75 bytes
+.prg size:              201 bytes
+Data compression ratio: 6.746
+.prg size ratio:        1.726
+
+Specific RLE compression:
+--
+
+Compressed data size:   42 bytes
+.prg size:              180 bytes
+
+Data compression ratio: 12.047
+.prg size ratio:        1.927
+
+Custom compression 1:
+--
+
+Compressed data size:   38 bytes 
+.prg size:              147 bytes
+
+Data compression ratio: 13.315
+.prg size ratio:        2.360
+ 
+Custom compression 2:
+--
+
+Archer!
+
+Compressed data size:   --
+.prg size:              --
+
+Data compression ratio: --
+.prg size ratio:        --

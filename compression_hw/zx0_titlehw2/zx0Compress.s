@@ -56,7 +56,7 @@ exit_prg
     include "zx0-6502.s"
 
 
-    org     $1a00 ; zx0 compressed screen
+    ; org     $1a00 ; zx0 compressed screen
 zx0screen
     HEX 2f 20 fc f5 12 05 10 05 0e 14 3a 53 ec 82 01 0e
     HEX 88 05 13 03 01 b0 20 06 12 0f 0d a1 08 05 0c 0c

@@ -30,14 +30,14 @@ rle_decode
 decode_loop
     pla
     LDX     $22             ; load x into zp location for later
-    LDA     $1a00,X         ; LDA will turn zero flag on if it loaded zero (termination)
+    LDA     data_label,X         ; LDA will turn zero flag on if it loaded zero (termination)
     beq     loop            ; if reached termination, exit
     PHA                     ; A to stack
     cmp     #$20             ; Check if is a continuous space
     bne     case_not_space  ;
 case_continuous_space       ;if so, then load the number of space
     INX     ; x++
-    LDA     $1a00,X         ; get the loop amount in A
+    LDA     data_label,X         ; get the loop amount in A
     jmp     number_of_times
 case_not_space
     LDA     #1  ;      Case 1 time only.
@@ -94,8 +94,7 @@ whitescreen2
 
     rts
 
-    org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
-
+data_label
     HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 03 01 
     HEX 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA 10 12 
     HEX 05 13 13 60 1A 00 
