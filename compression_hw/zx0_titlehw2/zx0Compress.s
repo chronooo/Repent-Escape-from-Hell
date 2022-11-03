@@ -60,5 +60,5 @@ exit_prg
 zx0screen
     HEX 2f 20 fc f5 12 05 10 05 0e 14 3a 53 ec 82 01 0e
     HEX 88 05 13 03 01 b0 20 06 12 0f 0d a1 08 05 0c 0c
-    HEX 3f 01 a8 a0 10 12 05 13 cb 20 1a 20 af 82 00 fb
-    HEX ff ff 6a aa 80  
+    HEX 3f 01 a8 a0 10 12 05 13 cb 20 1a 20 aa 9a aa a0
+   
