@@ -41,7 +41,7 @@ _byte_skip_hi:
  ENDIF
 _byte_lo = * + 1
 _byte_hi = * + 2
-        lda $ffff               ; needs to be set correctly before
+        lda $ffff               ; needs to be set correctly before (placeholder)
  IF DECRUNCH_FORWARDS != 0
         inc _byte_lo
         bne _byte_skip_hi

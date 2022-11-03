@@ -18,10 +18,9 @@ DASM=dasm
 										$(DASM) $< -o$@ -l$*.lst
 endif
 
-all: 		rle_custom.prg
+all: 		titlescreentest.prg 
 
 clean:
 	- rm -f *.prg *.lst 
 
-RLE.prg:	RLE.s
-rle_custom.prg:rle_custom.s
+titlescreentest.prg:	titlescreentest.s
