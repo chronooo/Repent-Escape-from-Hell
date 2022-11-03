@@ -46,10 +46,8 @@ Data compression ratio: 13.315
 Custom compression 2:
 --
 
-Archer!
+Compressed data size:   42 bytes
+.prg size:              237 bytes
 
-Compressed data size:   --
-.prg size:              --
-
-Data compression ratio: --
-.prg size ratio:        --
+Data compression ratio: 12.047
+.prg size ratio:        1.46
