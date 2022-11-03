@@ -160,6 +160,7 @@ color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
     ;   01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E F1 F2
     ;   F3
     ;   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+label
     HEX 20 60 12 10 13 05 0E 01 0C 14 3A 03 06 0F 0D 08 ;....1A references
     HEX 1A 60 1E BA A7 13 F2 55 63 41 99 62 F2 1F E3 D2 ;60,1E,BA,A7 space lenghth
     HEX 64 8C 56 27 81 BA 76 46 31 00 ;remanining reveresed screendata.

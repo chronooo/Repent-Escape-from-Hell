@@ -50,4 +50,4 @@ Compressed data size:   42 bytes
 .prg size:              237 bytes
 
 Data compression ratio: 12.047
-.prg size ratio:        1.46
+.prg size ratio:        1.464

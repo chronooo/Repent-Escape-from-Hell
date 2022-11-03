@@ -18,9 +18,9 @@ DASM=~aycock/599.82/bin/dasm
 										echo https://pages.cpsc.ucalgary.ca/~bernardo.klein/hurrdurr.prg
 endif
 
-all: 		zx0Compress.prg
+all: 									custom_comp_2.prg
 
 clean:
 	- rm -f *.prg *.lst 
 
-zx0Compress.prg:	zx0Compress.s zx0-6502.s
+custom_comp_2.prg:						custom_comp_2.s
