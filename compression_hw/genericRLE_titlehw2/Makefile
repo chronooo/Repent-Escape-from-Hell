@@ -18,10 +18,9 @@ DASM=dasm
 										$(DASM) $< -o$@ -l$*.lst
 endif
 
-all: 		RLE.prg exoCompress.prg
+all: 		RLE.prg 
 
 clean:
 	- rm -f *.prg *.lst 
 
 RLE.prg:	RLE.s
-exoCompress.prg:	exoCompress.s main.s exodecrunch.s

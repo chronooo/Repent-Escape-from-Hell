@@ -68,9 +68,9 @@ dzx0s_copy
 cop1
               lda   (pntr),y
               inc   pntr
-              bne   cop1end
+              bne   coppend
               inc   pntr+1
-cop1end       jsr   put_byte
+coppend       jsr   put_byte
 
               bne   cop1
               dec   elias_h
@@ -91,7 +91,7 @@ dzx0s_new_offset
               jsr   get_byte
               ; Divide by 2
               lsr   offset+1
-              ror   *
+              ror   
               sta   offset
 
               ; Store the extra bit of offset to our bit reserve,
@@ -102,10 +102,10 @@ dzx0s_new_offset
               ;       the length by 1, this is 8 extra bytes...
               jsr   get_elias_carry
 
-*             inx
-              bne   dzx0offend
+dzx1          inx
+              bne   dzx2
               inc   elias_h
-dzx0offend    bne   dzx0s_copy
+dzx2          bne   dzx0s_copy
 
 ; Read an elias-gamma interlaced code.
 ; ------------------------------------
@@ -118,15 +118,15 @@ get_elias_carry
 elias_loop
               ; Get one bit - use ROL to allow injecting one bit at start
               rol   bitr
-              bne   eliasend
+              bne   eli1
               ; Read new bit from stream
               tax
               jsr   get_byte
               ;sec   ; not needed, C=1 guaranteed from last bit
-              rol   *
+              rol   
               sta   bitr
               txa
-eliasend
+eli1
               bcs   elias_get
 
               ; Got 1, stop reading
@@ -135,22 +135,22 @@ exit          rts
 
 elias_get     ; Read next data bit to LEN
               asl   bitr
-              rol   *
+              rol   
               rol   elias_h
               bcc   elias_loop
 
 get_byte
               lda   (ZX0_src),y
               inc   ZX0_src
-              bne   getbyteend
+              bne   get2
               inc   ZX0_src+1
-getbyteend    rts
+get2          rts
 
 put_byte
               sta   (ZX0_dst),y
               inc   ZX0_dst
-              bne   putbyteend
+              bne   put2
               inc   ZX0_dst+1
-putbyteend    dex
+put2          dex
               rts
 

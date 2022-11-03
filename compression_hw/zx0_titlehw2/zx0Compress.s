@@ -17,9 +17,9 @@ stubend
 start
 
     ;setup screen
-    jsr     screen_init
-    jsr     full_decomp
-    jsr     loop
+    jsr     screen_init ; initializing colors on the screen
+    jsr     full_decomp ; calling the decompressor
+    jsr     loop    ; waiting for the user to press z
 
 screen_init
     lda     #$02 
