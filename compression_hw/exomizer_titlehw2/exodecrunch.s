@@ -69,7 +69,7 @@ DONT_REUSE_OFFSET = 0
  ENDIF
 ; -------------------------------------------------------------------
 ; if decrunching forwards then the following line must be uncommented.
-;DECRUNCH_FORWARDS = 1
+DECRUNCH_FORWARDS = 1
  IFNCONST DECRUNCH_FORWARDS
 DECRUNCH_FORWARDS = 0
  ENDIF
@@ -118,7 +118,7 @@ exod_zp_bits_hi = $a7
 exod_zp_ro_state = $a8
  ENDIF
 
-exod_zp_bitbuf  = $fd
+exod_zp_bitbuf  = $fd       ;This is the load address
 exod_zp_dest_lo = exod_zp_bitbuf + 1      ; dest addr lo
 exod_zp_dest_hi = exod_zp_bitbuf + 2      ; dest addr hi
 
