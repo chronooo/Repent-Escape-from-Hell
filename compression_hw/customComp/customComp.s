@@ -10,22 +10,23 @@ W =         $20
     dc.w    12345
     dc.b    $9e, "4109", 0
 
+; Custom compression. modified RLE scheme to not store the first and last blocks of spaces.
+; This allows us to have a writable region of less than a byte, which gets rid of a lot of unnecessary 
+; duplicate code we had to account for the screen memory space spanning more than a byte.
+; this scheme, however, needs a white screen fill before the decompression takes place, but in the end it ends up being more efficient. 
+
 stubend
     dc.w    0
-
 start
-
     ;set up screen
     jsr     screen_init
 
 ; decode the screen data and put it into screen memory
 rle_decode
     LDX     #0              ; store 0 in x, use it as index for Read loop
-    stx     $22             ; store x into zp location for later
-    LDY     #1
-    sty     $23             ; y overflow flag to 1 in the beginning
     LDY     #0              ; use Y as counter for the write loop
-    pha
+    stx     $22             ; store x into zp location for later
+    pha                     ; push something because first line is pull from stack
 decode_loop
     pla
     LDX     $22             ; load x into zp location for later
@@ -48,31 +49,11 @@ number_of_times
 write_rle
     cpx     #0  ; is loop done?
     beq     decode_loop      ; if it is, decode another char
-    ; has Y overflown once?
-    lda     $23              ; will set 0 flag on load
-    beq     write_rle_overflow      ; y has overflown once
-; y has not overflown yet.. ->
     PLA     ; bring value of character back into A
-    sta     $1e00,Y          ; store char value at Y
+    sta     $1e60,Y          ; store char value at Y
     PHA     ; store A back
     DEX     ; decrement the amount of char repeats left
     INY     ; inc the screen mem address
-    beq     y_overflow_set ; if y is 0 after increase, it has overflown
-    jmp     write_rle
-
-write_rle_overflow
-    cpx     #0  ; is loop done?
-    beq     decode_loop      ; if it is, decode another char
-    PLA     ; bring value of character back into A
-    sta     $1f00,Y          ; store char value at Y
-    PHA     ; store A back
-    DEX     ; decrement the amount of char repeats left
-    INY     ; inc the screen mem address
-    jmp     write_rle
-
-
-y_overflow_set  ;set y overflow to true
-    sty     $23 ;storing 0 at the flag location
     jmp     write_rle
 
 loop
@@ -85,39 +66,36 @@ exit_prg
     rts
 
 screen_init
+
     lda     #$02
     ldx     #0
 color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
     STA     $9600,X
     INX
-    cpx     #255
-    BNE     color_ram1
-    STA     $9600,X
-    lda     #$00
-    ldx     #0
+    bne     color_ram1
+
+    lda     #$00    ; don't need to load x cause it is 0 now. x just wrapped around.
 color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
     STA     $9700,X
     INX
-    cpx     #255
-    BNE     color_ram2
-    STA     $9700,X
-    lda     #$00
-    ldx     #0
+    bne     color_ram2
+
+    lda     #32     ; same thing with X here.
+whitescreen
+    STA     $1e00,X
+    INX     
+    BNE     whitescreen
+
+    lda     #32     ; same thing with X here.
+whitescreen2
+    STA     $1f00,X
+    INX     
+    BNE     whitescreen2
+
     rts
 
     org     $1a00 ; RLE encoded screen!; terminate with 00 just because (value, count)
 
-    HEX 20 60 ec bc 20 1e d6 e7 df e6 7d 20 ba fa 8f 20 a7 00
-
-    ;RLE
-    ;Hex value (HH) is how many chars, Following letter/value is what is on the screen
-    ;$60 20 $01 12 $01 05 $01 10 $01 05 $01 0E $01 14 $01 3A $1E 20 $01 05 $01 13 $01 03 $01 01 $01 10 $01 05
-    ;$01 20 $01 06 $01 12 $01 0F $01 0D $01 20 $01 08 $01 05 $01 0C $01 0C $BA 20 $01 10 $01 12 $01 05 $01 13
-    ;$01 13 $01 20 $01 1A $A7 20
-    ;Corresponding screen code for each letter
-    ;A'=01 C'=03 E'=05 F'=06
-    ;H'=08 L'=0C
-    ;M'=0D N'=0E O'=0F P'=10 R'=12
-    ;S'=13 T'=14 W(whitespace)=20 Z= 1A
-    ; :'=3A
-
+    HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 ;[]*$96,REPENT:[]*$1E[]AN[]E
+    HEX 13 03 01 10 05 60 06 12 0F 0D 60 08 05 0C 0C ;SCAPE[]FROM[]HELL
+    HEX 20 BA 10 12 05 13 13 60 1A 00 ;[]*$BA,PRESS[]Z[]*$A7
