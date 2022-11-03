@@ -13,11 +13,11 @@ def get_char(r,g,b,alpha = 256):
 if __name__ == '__main__':
     IMG = sys.argv[1]
     im = Image.open(IMG)
-    im = im.resize((width,heigh), Image.NEAREST)
+    im = im.resize((width,height), Image.NEAREST)
     txt = ""
     printable_text = ""
     for i in range(height):
-        txt += "%"
+        txt += "    dc.b    #%"
         for j in range(width):
             temp_char = get_char(*im.getpixel((j,i)))
             if temp_char == " ":
