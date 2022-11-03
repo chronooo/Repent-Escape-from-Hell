@@ -18,9 +18,9 @@ DASM=dasm
 										$(DASM) $< -o$@ -l$*.lst
 endif
 
-all: 		exoCompress.prg
+all: 		zx0Compress.prg
 
 clean:
 	- rm -f *.prg *.lst 
 
-exoCompress.prg:	exoCompress.s exodecrunch.s
+zx0Compress.prg:	zx0Compress.s zx0-6502.s
