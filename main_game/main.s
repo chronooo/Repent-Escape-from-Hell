@@ -9,6 +9,7 @@ X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is lef
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used in index -> coordinate routine right now.
 Y_TMP  =    $24     ; ZP 0x24: temp variable for Y coordinate value. only used in index -> coordinate routine right now.
+STATUS =    $25     ; ZP 0x25: player character status.
 
 MAP    =    $1b04   ; map array pointer.
 
