@@ -33,6 +33,15 @@ draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" chara
     cpx     #21    ; 
     BNE     draw_ground
 
+   ;   loop to set the bottom row of the characters to character 00001, written to map array
+    lda     #5          ; selecting char 1
+    ldx     #0          ; loop counter
+add_clouds              ; puts clouds in chars 0 to 21
+    STA     MAP,X     
+    INX     
+    cpx     #21    ; 
+    BNE     add_clouds 
+
     ; init sad guys (for testing)
     lda     #3
     ldx     #101
@@ -86,9 +95,11 @@ j_shoot
     jmp     update_next_frame   ; leave
 a_left
     dec     X_POS               ; X_POS -= 1
+    jsr     parallax_left
     jmp     key_pressed
 d_right
     inc     X_POS               ; X_POS += 1
+    jsr     parallax_right
     jmp     key_pressed
 w_top
     dec     Y_POS               ; Y_POS -= 1
@@ -218,12 +229,12 @@ drawloop
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #20             ; run waste time X times
+    ldx     #18             ; run waste time X times
     jsr     waste_time
 
     jmp     loop            ; go back to very top of while loop
 
-
+; ––––––––––––– ROUTINES:
 
 coord_to_index              ; routine to compute offset from MAP from x, y value (array index)
                             ; Input: X value in X_TMP, Y value in Y_TMP ZP locations.
@@ -289,9 +300,9 @@ waste_time_loop_inner
 init            ; call routine in the beginning.
 
     ;       setting init values of player x y coords
-    LDA     #0
+    LDA     #5
     STA     X_POS
-    LDA     #0
+    LDA     #5
     STA     Y_POS
 
 ;   Switching character set pointer to 0x1c00:
@@ -330,6 +341,55 @@ color_ram
     BNE     color_ram
     STA     $9600,X
     rts                     ; get out of routine and go to the game loop
+
+
+
+; routine to shift the parallax scrolling part of MAP (indices 0 to 20) one to the left. uses A and X registers.
+parallax_left
+    ldx     #0              ; init counter to to loop though 8 byte character
+ror_loop
+
+    lda     $1c50,X
+    and     #%00000001      ; bit mask testing for last bit of the byte
+    bne     ror_set         ; if zero flag is 0, need to set carry, else fall through
+
+    CLC                     ; clear carry cause bit was 0 (else)   
+    jmp     ror_p2
+ror_set                     ; set carry cause bit was 1 (if)
+    SEC
+
+ror_p2
+    ror     $1c50,X
+    INX     
+    cpx     #16
+    bne     ror_loop
+    rts
+
+; routine to shift the parallax scrolling part of MAP (indices 0 to 20) one to the right. uses A and X registers.
+parallax_right                        ; if d was pressed, decrease frame
+    ldx     #0              ; init counter to to loop though 8 byte character
+rol_loop
+    lda     $1c50,X            ; 1c50 is char 5 (clouds)
+    and     #%10000000      ; bit mask testing for last bit of the byte
+    bne     rol_set         ; if zero flag is 0, need to set carry, else fall through
+    CLC                     ; clear carry cause bit was 0 (else)   
+    jmp     rol_p2
+rol_set                     ; set carry cause bit was 1 (if)
+    SEC
+
+rol_p2
+    rol     $1c50,X
+    INX     
+    cpx     #16
+    bne     rol_loop
+    rts
+
+
+
+
+
+
+
 
 /*
 ;   END OF CODE, START OF DATA
@@ -441,3 +501,26 @@ color_ram
     dc.b    #%01111110
     dc.b    #%01111100
     dc.b    #%00000000
+
+
+    ;       CHAR 05 - "cloud" 
+
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00111000
+    dc.b    #%01000100
+    dc.b    #%10000010
+    dc.b    #%00000001
+    dc.b    #%01000001
+    dc.b    #%00011110
+    dc.b    #%01111110
+    dc.b    #%01011100
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+
+
+    
