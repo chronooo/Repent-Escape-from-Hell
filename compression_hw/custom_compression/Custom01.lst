@@ -1,0 +1,167 @@
+------- FILE Custom01.s LEVEL 1 PASS 2
+      1  10ec					      processor	6502
+      2  10ec		       10 c1	   REFERENCE_PG0 =	$10C1	;1AC2-1
+      3  10ec		       10 cf	   REFERENCE_PG1 =	$10CF	;1AD0-1
+      4  10ec		       10 d3	   SPACES_LENGTH =	$10D3
+      5  10ec		       10 d7	   START_SCREEN =	$10D7
+      6  10ec		       00 0a	   PT_SPACES_LENGTH =	$0A
+      7  10ec		       00 0b	   SCREEN_LSB =	$0B
+      8  10ec		       00 0c	   SCREEN_MSB =	$0C
+      9  10ec		       00 0d	   LAST_READING_INDEX =	$0D
+     10  10ec ????						; KERNAL [sic] routines
+     11  10ec ????
+     12  1001					      org	$1001
+     13  1001
+     14  1001		       0b 10		      dc.w	stubend
+     15  1003		       39 30		      dc.w	12345
+     16  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+     17  100b
+     18  100b				   stubend
+     19  100b		       00 00		      dc.w	0
+     20  100d
+     21  100d				   start
+     22  100d
+     23  100d							;set up screen
+     24  100d		       20 9f 10 	      jsr	screen_init
+     25  1010
+     26  1010							; decode the screen data and put it into screen memory
+     27  1010				   b4_decode
+     28  1010		       a9 00		      LDA	#00	;End of screen data
+     29  1012		       85 0a		      STA	PT_SPACES_LENGTH	;initial number of spaces pointer
+     30  1014		       48		      pha
+     31  1015		       a0 00		      LDY	#0	; store 0 in Y, use it as index for Read loop
+     32  1017		       a2 00		      LDX	#0
+     33  1019				   decode_loop
+     34  1019		       b9 d7 10 	      LDA	START_SCREEN,Y
+     35  101c		       c9 00		      CMP	#$00	; end of screen
+     36  101e		       f0 36		      BEQ	decode_loop_done
+     37  1020		       4a		      LSR
+     38  1021		       4a		      LSR
+     39  1022		       4a		      LSR
+     40  1023		       4a		      LSR		;find the MS 4 bit of this byte
+     41  1024				   2nd_char
+     42  1024		       a2 00		      LDX	#$0
+     43  1026		       86 00		      STX	$0
+     44  1028		       4c 39 10 	      JMP	decode_a_char
+     45  102b				   fst_char
+     46  102b		       b9 d7 10 	      LDA	START_SCREEN,Y
+     47  102e		       29 0f		      AND	#$0F	;find the LS 4 bit of this byte
+     48  1030		       e6 00		      INC	$0
+     49  1032		       4c 39 10 	      Jmp	decode_a_char
+     50  1035				   fst_char_done
+     51  1035		       c8		      INY
+     52  1036		       4c 19 10 	      jmp	decode_loop
+     53  1039							;******
+     54  1039				   decode_a_char
+     55  1039		       c9 0f		      cmp	#$F
+     56  103b		       f0 0a		      beq	decode_page_1
+     57  103d				   decode_page_0
+     58  103d		       85 0d		      STA	LAST_READING_INDEX	;store the char to memory in case of usage for page 1
+     59  103f		       aa		      TAX
+     60  1040		       bd c1 10 	      LDA	REFERENCE_PG0,X	;load a char from memory
+     61  1043		       48		      PHA
+     62  1044		       4c 4e 10 	      jmp	decode_a_char_done
+     63  1047				   decode_page_1
+     64  1047		       68		      PLA		;push out the last char for stack
+     65  1048		       a6 0d		      LDX	LAST_READING_INDEX	; find the index
+     66  104a		       bd cf 10 	      LDA	REFERENCE_PG1,X	;load a char from memory
+     67  104d		       48		      PHA
+     68  104e				   decode_a_char_done
+     69  104e		       a5 00		      lda	$0
+     70  1050		       c9 01		      cmp	#$1
+     71  1052		       f0 e1		      beq	fst_char_done
+     72  1054		       d0 d5		      bne	fst_char
+     73  1056							;******
+     74  1056				   decode_loop_done
+     75  1056							;###########################################
+     76  1056							; draw chars on screen based on stack
+     77  1056							;###########################################
+     78  1056				   draw_on_screen
+     79  1056		       a0 00		      LDY	#$0
+     80  1058		       a9 00		      LDA	#$00
+     81  105a		       85 0b		      STA	SCREEN_LSB
+     82  105c		       a9 1e		      LDA	#$1e	;initialize the screen page
+     83  105e		       85 0c		      STA	SCREEN_MSB
+     84  1060				   draw_on_screen_loop
+     85  1060		       68		      PLA		;get a char from stack
+     86  1061		       c9 00		      CMP	#$00
+     87  1063		       f0 27		      BEQ	loop	;end of screen
+     88  1065		       c9 20		      CMP	#$20	; if continous space?
+     89  1067		       f0 08		      BEQ	draw_contionous_spaces
+     90  1069							;not contiionous space char
+     91  1069		       91 0b		      sta	(SCREEN_LSB),Y
+     92  106b		       20 96 10 	      jsr	draw_on_screen_pt_update
+     93  106e		       4c 60 10 	      jmp	draw_on_screen_loop
+     94  1071							;*****draw_contionous_spaces******
+     95  1071				   draw_contionous_spaces
+     96  1071		       a6 0a		      LDX	PT_SPACES_LENGTH
+     97  1073		       bd d3 10 	      LDA	SPACES_LENGTH,X	;get curreent space length
+     98  1076		       e6 0a		      INC	PT_SPACES_LENGTH
+     99  1078		       aa		      TAX		;store current space length to X
+    100  1079				   draw_contionous_spaces_loop
+    101  1079		       8a		      TXA
+    102  107a		       c9 00		      CMP	#$00
+    103  107c		       f0 0b		      BEQ	draw_contionous_spaces_done
+    104  107e		       a9 20		      LDA	#$20
+    105  1080		       91 0b		      STA	(SCREEN_LSB),Y
+    106  1082		       20 96 10 	      jsr	draw_on_screen_pt_update
+    107  1085		       ca		      DEX		; X--
+    108  1086		       4c 79 10 	      jmp	draw_contionous_spaces_loop
+    109  1089				   draw_contionous_spaces_done
+    110  1089		       4c 60 10 	      jmp	draw_on_screen_loop
+    111  108c
+    112  108c							;###########################################
+    113  108c							; final clear
+    114  108c							;###########################################
+    115  108c				   loop
+    116  108c		       a5 c5		      lda	$00C5	;test current key
+    117  108e		       c9 21		      cmp	#33	; Z in current key table
+    118  1090		       f0 03		      beq	exit_prg
+    119  1092		       4c 8c 10 	      jmp	loop
+    120  1095				   exit_prg
+    121  1095		       60		      rts
+    122  1096							;###########################################
+    123  1096							; draw_on_screen_pt_update
+    124  1096							;###########################################
+    125  1096				   draw_on_screen_pt_update
+    126  1096		       c8		      INY		; inc the screen mem address
+    127  1097		       f0 01		      beq	draw_on_screen_pt_update_y_overflow_set	; if y is 0 after increase, it has overflown
+    128  1099		       60		      rts
+    129  109a				   draw_on_screen_pt_update_y_overflow_set
+    130  109a		       a9 1f		      LDA	#$1f
+    131  109c		       85 0c		      STA	SCREEN_MSB
+    132  109e		       60		      rts
+    133  109f							;###########################################
+    134  109f
+    135  109f							;###########################################
+    136  109f							; initialize the screen with color
+    137  109f							;###########################################
+    138  109f				   screen_init
+    139  109f		       a9 02		      lda	#$02
+    140  10a1		       a2 00		      ldx	#0
+    141  10a3				   color_ram1		; fill color ram 0x9600 to 0x96ff with red (02)
+    142  10a3		       9d 00 96 	      STA	$9600,X
+    143  10a6		       e8		      INX
+    144  10a7		       e0 ff		      cpx	#255
+    145  10a9		       d0 f8		      BNE	color_ram1
+    146  10ab		       9d 00 96 	      STA	$9600,X
+    147  10ae		       a9 00		      lda	#$00
+    148  10b0		       a2 00		      ldx	#0
+    149  10b2				   color_ram2		; fill color ram 0x9700 to 0x97ff with black (00)
+    150  10b2		       9d 00 97 	      STA	$9700,X
+    151  10b5		       e8		      INX
+    152  10b6		       e0 ff		      cpx	#255
+    153  10b8		       d0 f8		      BNE	color_ram2
+    154  10ba		       9d 00 97 	      STA	$9700,X
+    155  10bd		       a9 00		      lda	#$00
+    156  10bf		       a2 00		      ldx	#0
+    157  10c1		       60		      rts
+    158  10c2							;###########################################
+    159  10c2
+    160  10c2							;   01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E F1 F2
+    161  10c2							;   F3
+    162  10c2							;   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+    163  10c2		       20 60 12 10*	      HEX	20 60 12 10 13 05 0E 01 0C 14 3A 03 06 0F 0D 08	;....1A references
+    164  10d2		       1a 60 1e ba*	      HEX	1A 60 1E BA A7 13 F2 55 63 41 99 62 F2 1F E3 D2	;60,1E,BA,A7 space lenghth
+    165  10e2		       64 8c 56 27*	      HEX	64 8C 56 27 81 BA 76 46 31 00	;remanining reveresed screendata.
+    166  10ec

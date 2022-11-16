@@ -1,0 +1,120 @@
+------- FILE RLE.s LEVEL 1 PASS 2
+      1  1a4b					      processor	6502
+      2  1a4b ????
+      3  1a4b ????						; KERNAL [sic] routines
+      4  1a4b ????	       ff d2	   CHROUT     =	$ffd2
+      5  1a4b ????	       ff cf	   CHRIN      =	$ffcf
+      6  1a4b ????	       00 20	   W	      =	$20
+      7  1001					      org	$1001
+      8  1001
+      9  1001		       0b 10		      dc.w	stubend
+     10  1003		       39 30		      dc.w	12345
+     11  1005		       9e 34 31 30*	      dc.b	$9e, "4109", 0
+     12  100b
+     13  100b				   stubend
+     14  100b		       00 00		      dc.w	0
+     15  100d
+     16  100d				   start
+     17  100d
+     18  100d							;set up screen
+     19  100d		       20 5a 10 	      jsr	screen_init
+     20  1010
+     21  1010							; decode the screen data and put it into screen memory
+     22  1010				   rle_decode
+     23  1010		       a2 00		      LDX	#0	; store 0 in x, use it as index for Read loop
+     24  1012		       86 22		      stx	$22	; store x into zp location for later
+     25  1014		       a0 01		      LDY	#1
+     26  1016		       84 23		      sty	$23	; y overflow flag to 1 in the beginning
+     27  1018		       a0 00		      LDY	#0	; use Y as counter for the write loop
+     28  101a		       48		      PHA
+     29  101b				   decode_loop
+     30  101b		       68		      PLA
+     31  101c		       a6 22		      LDX	$22	; load x into zp location for later
+     32  101e		       bd 00 1a 	      LDA	$1a00,X	; LDA will turn zero flag on if it loaded zero (termination)
+     33  1021		       f0 30		      beq	loop	; if reached termination, exit
+     34  1023		       48		      PHA		; A to stack
+     35  1024		       e8		      INX		; x++
+     36  1025		       bd 00 1a 	      LDA	$1a00,X	; get the loop amount in A
+     37  1028		       e8		      INX		; increment X in anticipation of next loop
+     38  1029		       86 22		      stx	$22	; store x into zp location for later
+     39  102b		       aa		      TAX		; how many time to repeat char into X
+     40  102c				   write_rle
+     41  102c		       e0 00		      cpx	#0	; is loop done?
+     42  102e		       f0 eb		      beq	decode_loop	; if it is, decode another char
+     43  1030							; has Y overflown once?
+     44  1030		       a5 23		      lda	$23	; will set 0 flag on load
+     45  1032		       f0 0c		      beq	write_rle_overflow	; y has overflown once
+     46  1034							; y has not overflown yet.. ->
+     47  1034		       68		      PLA		; bring value of character back into A
+     48  1035		       99 00 1e 	      sta	$1e00,Y	; store char value at Y
+     49  1038		       48		      PHA		; store A back
+     50  1039		       ca		      DEX		; decrement the amount of char repeats left
+     51  103a		       c8		      INY		; inc the screen mem address
+     52  103b		       f0 11		      beq	y_overflow_set	; if y is 0 after increase, it has overflown
+     53  103d		       4c 2c 10 	      jmp	write_rle
+     54  1040
+     55  1040				   write_rle_overflow
+     56  1040		       e0 00		      cpx	#0	; is loop done?
+     57  1042		       f0 d7		      beq	decode_loop	; if it is, decode another char
+     58  1044		       68		      PLA		; bring value of character back into A
+     59  1045		       99 00 1f 	      sta	$1f00,Y	; store char value at Y
+     60  1048		       48		      PHA		; store A back
+     61  1049		       ca		      DEX		; decrement the amount of char repeats left
+     62  104a		       c8		      INY		; inc the screen mem address
+     63  104b		       4c 2c 10 	      jmp	write_rle
+     64  104e
+     65  104e
+     66  104e				   y_overflow_set		;set y overflow to true
+     67  104e		       84 23		      sty	$23	;storing 0 at the flag location
+     68  1050		       4c 2c 10 	      jmp	write_rle
+     69  1053
+     70  1053				   loop
+     71  1053		       a5 c5		      lda	$00C5
+     72  1055		       c9 21		      cmp	#33	; Z in current key table
+     73  1057		       d0 fa		      bne	loop
+     74  1059
+     75  1059
+     76  1059				   exit_prg
+     77  1059		       60		      rts
+     78  105a
+     79  105a				   screen_init
+     80  105a		       a9 02		      lda	#$02
+     81  105c		       a2 00		      ldx	#0
+     82  105e				   color_ram1		; fill color ram 0x9600 to 0x96ff with red (02)
+     83  105e		       9d 00 96 	      STA	$9600,X
+     84  1061		       e8		      INX
+     85  1062		       e0 ff		      cpx	#255
+     86  1064		       d0 f8		      BNE	color_ram1
+     87  1066		       9d 00 96 	      STA	$9600,X
+     88  1069		       a9 00		      lda	#$00
+     89  106b		       a2 00		      ldx	#0
+     90  106d				   color_ram2		; fill color ram 0x9700 to 0x97ff with black (00)
+     91  106d		       9d 00 97 	      STA	$9700,X
+     92  1070		       e8		      INX
+     93  1071		       e0 ff		      cpx	#255
+     94  1073		       d0 f8		      BNE	color_ram2
+     95  1075		       9d 00 97 	      STA	$9700,X
+     96  1078		       a9 00		      lda	#$00
+     97  107a		       a2 00		      ldx	#0
+     98  107c		       60		      rts
+     99  107d
+    100  1a00					      org	$1a00	; RLE encoded screen!; terminate with 00 just because (value, count)
+    101  1a00
+    102  1a00		       20 60 12 01*	      HEX	20 60 12 01 05 01 10 01 05 01 0E 01 14 01 3A 01
+    103  1a10		       20 1e 01 01*	      HEX	20 1E 01 01 0E 01 20 01 05 01 13 01 03 01 01 01
+    104  1a20		       10 01 05 01*	      HEX	10 01 05 01 20 01 06 01 12 01 0F 01 0D 01 20 01
+    105  1a30		       08 01 05 01*	      HEX	08 01 05 01 0C 01 0C 01 20 BA 10 01 12 01 05 01
+    106  1a40		       13 01 13 01*	      HEX	13 01 13 01 20 01 1A 01 20 A7 00
+    107  1a4b
+    108  1a4b							;RLE
+    109  1a4b							;Hex value (HH) is how many chars, Following letter/value is what is on the screen
+    110  1a4b							;$60 20 $01 12 $01 05 $01 10 $01 05 $01 0E $01 14 $01 3A $1E 20 $01 05 $01 13 $01 03 $01 01 $01 10 $01 05
+    111  1a4b							;$01 20 $01 06 $01 12 $01 0F $01 0D $01 20 $01 08 $01 05 $01 0C $01 0C $BA 20 $01 10 $01 12 $01 05 $01 13
+    112  1a4b							;$01 13 $01 20 $01 1A $A7 20
+    113  1a4b							;Corresponding screen code for each letter
+    114  1a4b							;A'=01 C'=03 E'=05 F'=06 
+    115  1a4b							;H'=08 L'=0C
+    116  1a4b							;M'=0D N'=0E O'=0F P'=10 R'=12 
+    117  1a4b							;S'=13 T'=14 W(whitespace)=20 Z= 1A
+    118  1a4b							; :'=3A
+    119  1a4b
