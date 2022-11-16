@@ -1,3 +1,5 @@
 .DS_Store
 *.prg
-.idea
+*.lst
+**/.idea/
+.nfs*

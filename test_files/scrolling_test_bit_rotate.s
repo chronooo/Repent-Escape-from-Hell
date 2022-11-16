@@ -149,6 +149,7 @@ CHARACTER SET DATA:
     ;       CHAR 01         ; all filled
     ds      8, $FF          ; declares 8 bytes of value 0xFF
 
+
     ;       CHAR 02 
     dc.b    %00000000       ; 0x1c10
     dc.b    %11111110       ; 0x1c11
