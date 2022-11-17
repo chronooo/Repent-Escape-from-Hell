@@ -113,8 +113,16 @@ refresh_player_position_clear; clear the status correspoinding bits
 exit_prg
     rts
 test_code       ;[temporary code]
-    LDY     #$0
-    jsr     event_life
+    ; init sad guys (for testing)
+    lda     #3
+    ldx     #101
+    STA     MAP,X     
+    ldx     #142
+    STA     MAP,X     
+    ldx     #208
+    STA     MAP,X     
+    ldx     #82
+    STA     MAP,X     
     jmp     update_next_frame
 j_shoot
     lda     X_POS               ; load X_POS into A_reg
@@ -287,8 +295,11 @@ update_map_loop
                             ; bitmask 0 from bits 765 to get the character array index
     tay                     ; save A_reg in Y, because we are going to destroy the original A_reg next line
     AND     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
+    sta     $09             ;store the projectile type for futrue useage
     cmp     #%00000100              ; is the object a projectile?
     beq     proj_update     ; update the projectile if it is one!
+    cmp     #%00000011          ;if this an enemy charging
+    beq     proj_update
 post_proj_update
     INX                         
     cpx     #$FC            ; is X == 0xFC?
@@ -312,32 +323,73 @@ proj_move                       ; MOVE the projectile if its time has come (bits
     txa                         ; transfer index (offset) to A in order to retrieve coordinates via routine
     jsr     index_to_coord      ; call routine, get (x, y) of index in X_TMP, Y_TMP
     LDA     X_TMP               ; load X value of projectile coordinate for comparison
-    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile. else, x+=1, and store that.
-    beq     proj_gone    
+    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile. 
+    beq     proj_gone
+    cmp     #0
+    beq     proj_gone           ; if x == 0, we are on edge of map. delete the projectile. 
 
     ; is the projectile going to hit something? check what is in front of projectile.
-    INX                         ; get index of tile right in front of projectile 
+    ;else, x+=1, and store that.
+    ldy     $09
+    cpy     #$04
+    beq     proj_right_move
+    cpy     #$03
+    beq     proj_left_move
+proj_left_move
+    dex     ; get index of tile left in front of projectile
+    jmp     proj_check 
+proj_right_move
+    inx                         ; get index of tile right in front of projectile
+proj_check
     lda     MAP,X               ; load value of (0x1B04 + X) into A_reg
     AND     #%00011111          ; bitmask 765 for comparison
+    CPY     #$03
+    beq     proj_check_shoting_player
+proj_check_shoting_enemy
     cmp     #%00000011          ; is it an enemy (char 3)
-    beq     proj_hit            ; projectile hit an enemy
+    beq     proj_hit_enemy            ; projectile hit an enemy
+    jmp     proj_check_in_air
+proj_check_shoting_player
+    cmp     #%00000010          ; is it a player (char 2)
+    beq     proj_hit_player
+proj_check_in_air
     cmp     #%0                 ; projectile in air? [updated]
     bne     proj_kill           ; kill projectile if it crash somthing else [updated]
-
+proj_update_to_map
+    cpy     #$03
+    beq     proj_update_to_map_shoting_player
+proj_update_to_map_shoting_enemy
     ; else, advance projectile one tile forward (X is still incremented right now!!)
     lda     #%00000100          ; load projectile with timer 0 into A_reg
     sta     MAP,X               ; store projectile into the tile to the right of it
     DEX                         ; set X back
-    lda     #0                  
+    jmp     proj_upate_to_map_cleared_existed_projecticle
+proj_update_to_map_shoting_player
+    lda      #%00000011         ; load projectile with timer 0 into A_reg
+    sta      MAP,X              ; store projectile into the tile to the left of it
+    inx                         ; set X back
+proj_upate_to_map_cleared_existed_projecticle
+    lda     #0               
     sta     MAP,X               ; write 0 to where projectile just was
     jmp     post_proj_update    ; go back to loop .
 
-proj_hit
+proj_hit_enemy
     lda     #0                  
     sta     MAP,X               ; write 0 to enemy location (kill it)
 proj_kill
+    cpy     #$03
+    beq     proj_kill_to_player
+proj_kill_to_enemy
     dex                         ; restore X original value
                                 ; then, fall through, and kill projectile too
+    jmp     proj_gone
+proj_kill_to_player
+    inx
+    jmp     proj_gone
+proj_hit_player
+    ldy     #$0
+    jsr     event_life          ;make player lose life by one
+    inx                         ;fall back  in order to remove proj
 proj_gone
     LDA     #0      
     sta     MAP,X               ; store 0 – whitespace, into where the projectile location.
@@ -915,6 +967,5 @@ draw_ladder_test
     dc.b    #%11111111
     dc.b    #%11111111
 
-    ;       CHAR 09 enemy projectile placeholder 
 
 
