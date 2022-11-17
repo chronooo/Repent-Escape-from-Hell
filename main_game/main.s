@@ -10,8 +10,11 @@ X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used i
 Y_TMP  =    $24     ; ZP 0x24: temp variable for Y coordinate value. only used in index -> coordinate routine right now.
 STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit prev ladder symbol][2bit life][3bit counter for falling down]
 
-MAP    =    $1b04   ; map array pointer.
+C_COL       =    $30     ; current column variable (which column are we on?)
+MAP_INDEX   =    $31     ; current map storage pointer. the one we read new cols from.
 
+MAP     =    $1b04   ; map array pointer.
+TMP_COL =    $1afc   ; where column is loaded when map array is read
 
     org     $1001
     dc.w    stubend
@@ -636,6 +639,8 @@ init            ; call routine in the beginning.
 ; clearing screen in beginning of game (writing char 00 to all 252 tiles)
     lda     #0          ; selecting char 0 
     ldx     #0          ; loop counter
+    stx     C_COL       ; 0 initialized variables:
+    stx     MAP_INDEX
 whitescreen             ; probably change this to a JSRable function later 
     STA     MAP,X
     INX     
@@ -780,9 +785,87 @@ draw_ladder_test
     lda     #1 ;ground
     sta     MAP,X
     rts
+
+
+
+
+;   read column function: reads a column in from the map array
+read_column        ; routine to read the next column in from the map.
+                            ; Input: map array index in A_reg
+                            ; Output: TMP_COL[8] will contain the characters of the column just read
+                            ; Modifies: A_reg, Y_reg, X_reg
+    ; first fill with air:
+    lda     #0
+    TAY     ;y as counter to go through 0 to 7 y value!
+col_blank_fill
+    sta    TMP_COL,Y
+    iny
+    cpy    #8
+    bne    col_blank_fill
+    ldx     MAP_INDEX ; load current column array index into X_reg 
+read_col_loop
+    lda     map1,X     ; read from map storage at index s
+    beq     read_col_done
+    cmp     #$FF
+    beq     read_col_done
+    ; else, check what we just loaded and put it in correct location.
+    lsr
+    lsr     ; DIVIDE BY 32 ! HAHA!  (only takes 5 bytes)
+    lsr     ; since y value is stored in bits 765, we need to put it 
+    lsr     ; in bits 210 so that we can use it as an INDEX!!
+    lsr
+    tay     ;; store that in Y
+    lda     map1,X     ; read same thing into A again
+    and     #%00011111  ; bit mask out the 765 bits (we don't need them anymore)
+    sta     TMP_COL,Y   ; store the char value at Y that we just Read
+    inx     
+    jmp     read_col_loop
+read_col_done
+    inx     ; inx so that we have increased x for next read
+    stx     MAP_INDEX
+    rts ; return from routine
+
+
+write_col_to_x_on_screen        ; Routine to write the column read from map encoding,
+                                ;         onto main map array at a certain x value.
+                                ;
+                                ; Input:  a column loaded in at TMP_COL via the read_column routine,
+                                ;         X_reg - the value on screen to write the temp column to.
+                                ; Output: none
+                                ; Modifies: A_reg, Y_reg, X_reg
+    ldy     #0 
+    tax     
+    clc                         ; clear carry before add. adding 63 (3x21) to it
+    adc     #63                 ; now X_reg holds the index of where first tile should Go
+    txa
+write_col_loop
+    lda     TMP_COL,Y
+    sta     MAP,X
+    tax     
+    clc                         ; clear carry before add.
+    adc     #21                 ; add 21 to go to next line !!!!
+    iny                         ; y++
+    cmp     #8                  ; if 8 POG!!! get out of function we are done
+    beq     write_col_done      ; get out rts
+    jmp     write_col_loop      ; 
+write_col_done
+    rts
+
+
 /*
 ;   END OF CODE, START OF DATA
 */
+
+
+; MAP 1 ENCODING:
+map1       
+    HEX 00 01 00 01 00 01 00 86 66 46 26 01 00 61 01 00 
+    HEX 61 01 00 61 01 00 83 61 01 00 61 01 00 86 66 46 
+    HEX 26 01 00 01 00 01 00 01 00 01 00 01 00 01 00 86 
+    HEX 66 46 26 01 00 61 01 00 61 01 00 61 01 00 83 61 
+    HEX 01 00 61 01 00 86 66 46 26 01 00 01 00 01 00 01 
+    HEX 00 01 FF
+
 
     ; map array. in case we want to have something there at game start,
     ; put that here (probably will not use, because then we cannot replay the game)
