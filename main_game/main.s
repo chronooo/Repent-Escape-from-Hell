@@ -3,6 +3,7 @@
 ;   KERNAL [sic] routines
 CHROUT =    $ffd2
 CHRIN  =    $ffcf
+CURKEY =    $00c5
 ;   ZERO PAGE MACROS
 X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
@@ -66,7 +67,7 @@ write_rle
     jmp     write_rle
 
 wait_for_z
-    lda     $00C5 ;test current key
+    lda     CURKEY ;test current key
     cmp     #33 ; Z in current key table
     beq     start_prg
     jmp     wait_for_z
@@ -110,7 +111,9 @@ data_label
 ; ----------------- Code for Title ends -----------------------------
 
 start
-
+    lda     #0 
+    ldx     #0 
+    ldy     #0
     jsr     init
 
 ;   loop to set the bottom row of the characters to character 00001, written to map array
@@ -180,7 +183,7 @@ refresh_player_position_clear; clear the status correspoinding bits
 ;-----
 ; GET PLAYER INPUT!
 ;-----
-    lda     $00C5       ; loads the current pressed key from memory
+    lda     CURKEY       ; loads the current pressed key from memory
     cmp     #10         ; if R is pressed, restart whole program
     beq     start
     cmp     #17         ; if A is pressed
@@ -193,8 +196,6 @@ refresh_player_position_clear; clear the status correspoinding bits
     beq     s_down
     cmp     #20         ; if J is pressed
     beq     j_shoot
-    cmp     #33         ; if Z is pressed, exit
-    beq     exit_prg
     cmp     #50         ;T for Test purpose
     beq     test_code
     jmp     update_next_frame
