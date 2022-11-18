@@ -11,8 +11,9 @@ X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used i
 Y_TMP  =    $24     ; ZP 0x24: temp variable for Y coordinate value. only used in index -> coordinate routine right now.
 STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit prev ladder symbol][2bit life][3bit counter for falling down]
 
-C_COL       =    $30     ; current column variable (which column are we on?)
-MAP_INDEX   =    $31     ; current map storage pointer. the one we read new cols from.
+C_COL           =    $30     ; current column variable (which column are we on?)
+MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
 
 MAP     =    $1b04   ; map array pointer.
 TMP_COL =    $1afc   ; where column is loaded when map array is read
@@ -198,6 +199,8 @@ refresh_player_position_clear; clear the status correspoinding bits
     beq     j_shoot
     cmp     #50         ;T for Test purpose
     beq     test_code
+    cmp     #13
+    beq     p_scroll
     jmp     update_next_frame
 
 exit_prg
@@ -217,7 +220,7 @@ test_code       ;[temporary code]
 j_shoot
     lda     X_POS               ; load X_POS into A_reg
     cmp     #20                 ; cannot spawn projectil if we are on the rightmost block
-    beq     update_next_frame   ; skip if x == 20
+    beq     label_j   ; skip if x == 20
     ; store projectile in player x + 1
     INX                         ;X load in refresh_player_position
     lda     MAP,X
@@ -226,7 +229,11 @@ j_shoot
     LDA     #%01100100          ; char 4 is projectile, timer set to 100 so that it advances quicker when just fired
     sta     MAP,X             ; store projectile at current index + 1
     DEX                         ; decrement X to bering its value back
+label_j
     jmp     update_next_frame   ; leave
+p_scroll
+    jsr     scroll_one_column
+    jmp     update_next_frame
 a_left
     ldy     #$0                 ;check move left flag
     jsr     check_legal_move
@@ -337,7 +344,7 @@ update_next_frame_player
     sta     $0
     ldx     #21
 add_life_symbol              ; puts add life symbols in line2
-    lda     #2              ;a life symol
+    lda     #9              ;a life symol
     STA     MAP,X
     INX
     lda     #0          ;a white space
@@ -680,7 +687,7 @@ load_life
     rts
 
 ;---
-; set life to status based on value in $0
+; set life to status based on value in $0               ; TODO: NEED TO CHANGE TO MACRO
 ;---
 set_life
     tya
@@ -727,7 +734,7 @@ init            ; call routine in the beginning.
     lda     #0          ; selecting char 0 
     ldx     #0          ; loop counter
     stx     C_COL       ; 0 initialized variables:
-    stx     MAP_INDEX
+    stx     MAP_READ_PTR
 whitescreen             ; probably change this to a JSRable function later 
     STA     MAP,X
     INX     
@@ -876,20 +883,20 @@ draw_ladder_test
 
 
 
-;   read column function: reads a column in from the map array
+;   read column function: reads a column in from the map array and puts it into TMP_COL array.
 read_column        ; routine to read the next column in from the map.
-                            ; Input: map array index in A_reg
+                            ; Input: none
                             ; Output: TMP_COL[8] will contain the characters of the column just read
                             ; Modifies: A_reg, Y_reg, X_reg
     ; first fill with air:
     lda     #0
     TAY     ;y as counter to go through 0 to 7 y value!
 col_blank_fill
-    sta    TMP_COL,Y
+    sta     TMP_COL,Y
     iny
-    cpy    #8
-    bne    col_blank_fill
-    ldx     MAP_INDEX ; load current column array index into X_reg 
+    cpy     #8
+    bne     col_blank_fill
+    ldx     MAP_READ_PTR ; load current column array index into X_reg 
 read_col_loop
     lda     map1,X     ; read from map storage at index s
     beq     read_col_done
@@ -909,7 +916,7 @@ read_col_loop
     jmp     read_col_loop
 read_col_done
     inx     ; inx so that we have increased x for next read
-    stx     MAP_INDEX
+    stx     MAP_READ_PTR
     rts ; return from routine
 
 
@@ -921,21 +928,66 @@ write_col_to_x_on_screen        ; Routine to write the column read from map enco
                                 ; Output: none
                                 ; Modifies: A_reg, Y_reg, X_reg
     ldy     #0 
-    tax     
-    clc                         ; clear carry before add. adding 63 (3x21) to it
-    adc     #63                 ; now X_reg holds the index of where first tile should Go
-    txa
+    ; tax     
+    ; clc                         ; clear carry before add. adding 63 (3x21) to it
+    ; adc     #63                 ; now X_reg holds the index of where first tile should Go
+    ldx     #104
 write_col_loop
     lda     TMP_COL,Y
     sta     MAP,X
-    tax     
+    txa     
     clc                         ; clear carry before add.
     adc     #21                 ; add 21 to go to next line !!!!
+    tax
     iny                         ; y++
-    cmp     #8                  ; if 8 POG!!! get out of function we are done
+    cpy     #8                  ; if 8 POG!!! get out of function we are done
     beq     write_col_done      ; get out rts
     jmp     write_col_loop      ; 
 write_col_done
+    rts
+
+scroll_one_column               ; Routine to move all columns to the left by 1, 
+                                ; destroy the leftmost column, and insert a column on the left.
+                                ;         
+                                ; Input:  none
+                                ;        
+                                ; Output: none
+                                ; Modifies: A_reg, Y_reg, X_reg
+
+    ; first, move all entries by 1 to the left.
+    ; starting from tile with index 63, as top three tiles are not scrolled.
+    ldx     #84
+scroll_one_col_shift_loop ; this loop applies MAP[X] = MAP[X + 1] (C syntax)
+    inx             ; get the address of the tile to the right of current tile
+    lda     MAP,X   ; load teh tile in front of us into A_reg
+    dex             ; put X_reg back to current tile index
+    sta     MAP,X   ; store it
+    inx             ; increase X for next iteration 
+    cpx     #251    ; if we are at last tile, fall through. else, jump back up.
+    bne     scroll_one_col_shift_loop
+    
+
+
+    jsr     read_column         ; read a column and place it into TMP_COL[8] array
+    ; ldx     #0
+    ; lda     #8
+    ; sta     TMP_COL,X
+    ; inx     
+    ; sta     TMP_COL,X
+    ; inx     
+    ; sta     TMP_COL,X
+    ; inx     
+    ; sta     TMP_COL,X
+    ; inx     
+    ; sta     TMP_COL,X
+    ; inx     
+    ; sta     TMP_COL,X
+    ; inx 
+    ; sta     TMP_COL,X
+    ; inx 
+    ; sta     TMP_COL,X
+
+    jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
 
 
@@ -945,13 +997,25 @@ write_col_done
 
 
 ; MAP 1 ENCODING:
-map1       
-    HEX 00 01 00 01 00 01 00 86 66 46 26 01 00 61 01 00 
-    HEX 61 01 00 61 01 00 83 61 01 00 61 01 00 86 66 46 
-    HEX 26 01 00 01 00 01 00 01 00 01 00 01 00 01 00 86 
-    HEX 66 46 26 01 00 61 01 00 61 01 00 61 01 00 83 61 
-    HEX 01 00 61 01 00 86 66 46 26 01 00 01 00 01 00 01 
-    HEX 00 01 FF
+map1          
+    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
+    HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
+    HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
+    HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
+    HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
+    HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
+    HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 a1 e1 00 43 
+    HEX 61 a1 e1 00 43 61 a1 e1 00 61 a1 e1 00 86 a6 c6 
+    HEX e1 00 e1 00 c3 e1 00 c3 e1 00 c3 e1 FF
+;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
+;     HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
+;     HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
+;     HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
+;     HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
+;     HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
+;     HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 e1 00 43 61 
+;     HEX e1 00 43 61 e1 00 61 e1 00 86 a6 c6 e1 00 e1 00 
+;     HEX c3 e1 00 c3 e1 00 c3 e1 FF
 
 
     ; map array. in case we want to have something there at game start,
@@ -1137,5 +1201,20 @@ map1
     dc.b    #%11111111
     dc.b    #%11111111
 
-
-
+    ;       CHAR 09 HEART
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%01111110
+    dc.b    #%10000001
+    dc.b    #%01111110
+    dc.b    #%00000000
+    dc.b    #%01100110
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%01111110
+    dc.b    #%00111100
+    dc.b    #%00011000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
