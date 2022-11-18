@@ -34,37 +34,37 @@ title
 
 ; decode the screen data and put it into screen memory
 rle_decode
-    LDX     #0              ; store 0 in x, use it as index for Read loop
-    LDY     #0              ; use Y as counter for the write loop
+    ldx     #0              ; store 0 in x, use it as index for Read loop
+    ldy     #0              ; use Y as counter for the write loop
     stx     $25             ; store x into zp location for later
     pha                     ; push something because first line is pull from stack
 decode_loop
     pla
-    LDX     $25             ; load x into zp location for later
-    LDA     data_label,X         ; LDA will turn zero flag on if it loaded zero (termination)
+    ldx     $25             ; load x into zp location for later
+    lda     data_label,X         ; lda will turn zero flag on if it loaded zero (termination)
     beq     wait_for_z            ; if reached termination, exit
-    PHA                     ; A to stack
+    pha                     ; A to stack
     cmp     #$20             ; Check if is a continuous space
     bne     case_not_space  ;
 case_continuous_space       ;if so, then load the number of space
-    INX     ; x++
-    LDA     data_label,X         ; get the loop amount in A
+    inx     ; x++
+    lda     data_label,X         ; get the loop amount in A
     jmp     number_of_times
 case_not_space
-    LDA     #1  ;      Case 1 time only.
+    lda     #1  ;      Case 1 time only.
 number_of_times
-    INX     ; increment X in anticipation of next loop
+    inx     ; increment X in anticipation of next loop
     stx     $25             ; store x into zp location for later
-    TAX     ; how many time to repeat char into X
+    tax     ; how many time to repeat char into X
 
 write_rle
     cpx     #0  ; is loop done?
     beq     decode_loop      ; if it is, decode another char
-    PLA     ; bring value of character back into A
+    pla     ; bring value of character back into A
     sta     $1e60,Y          ; store char value at Y
-    PHA     ; store A back
-    DEX     ; decrement the amount of char repeats left
-    INY     ; inc the screen mem address
+    pha     ; store A back
+    dex     ; decrement the amount of char repeats left
+    iny     ; inc the screen mem address
     jmp     write_rle
 
 wait_for_z
@@ -81,27 +81,27 @@ title_screen_init
     lda     #$02
     ldx     #0
 color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
-    STA     $9600,X
-    INX
+    sta     $9600,X
+    inx
     bne     color_ram1
 
     lda     #$00    ; don't need to load x cause it is 0 now. x just wrapped around.
 color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
-    STA     $9700,X
-    INX
+    sta     $9700,X
+    inx
     bne     color_ram2
 
     lda     #32     ; same thing with X here.
 titlewhitescreen
-    STA     $1e00,X
-    INX     
-    BNE     titlewhitescreen
+    sta     $1e00,X
+    inx     
+    bne     titlewhitescreen
 
     lda     #32     ; same thing with X here.
 titlewhitescreen2
-    STA     $1f00,X
-    INX     
-    BNE     titlewhitescreen2
+    sta     $1f00,X
+    inx     
+    bne     titlewhitescreen2
 
     rts
 
@@ -121,30 +121,30 @@ start
     lda     #1          ; selecting char 1
     ldx     #0          ; loop counter
 draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
-    STA     $1beb,X     
-    INX     
+    sta     $1beb,X     
+    inx     
     cpx     #21    ; 
-    BNE     draw_ground
+    bne     draw_ground
 
    ;   loop to set the bottom row of the characters to character 00001, written to map array
     lda     #5          ; selecting char 1
     ldx     #0          ; loop counter
 add_clouds              ; puts clouds in chars 0 to 21
-    STA     MAP,X     
-    INX     
+    sta     MAP,X     
+    inx     
     cpx     #21    ; 
-    BNE     add_clouds 
+    bne     add_clouds 
 
     ; init sad guys (for testing)
     lda     #3
     ldx     #101
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #142
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #208
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #82
-    STA     MAP,X     
+    sta     MAP,X     
 ;test: draw ladders
     jsr     draw_ladder_test
 
@@ -209,26 +209,26 @@ test_code       ;[temporary code]
     ; init sad guys (for testing)
     lda     #3
     ldx     #101
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #142
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #208
-    STA     MAP,X     
+    sta     MAP,X     
     ldx     #82
-    STA     MAP,X     
+    sta     MAP,X     
     jmp     update_next_frame
 j_shoot
     lda     X_POS               ; load X_POS into A_reg
     cmp     #20                 ; cannot spawn projectil if we are on the rightmost block
     beq     label_j   ; skip if x == 20
     ; store projectile in player x + 1
-    INX                         ;X load in refresh_player_position
+    inx                         ;X load in refresh_player_position
     lda     MAP,X
     cmp     #0                 ;check if air []
     bne     update_next_frame   ;cannot swan if projectil not in air []
-    LDA     #%01100100          ; char 4 is projectile, timer set to 100 so that it advances quicker when just fired
+    lda     #%01100100          ; char 4 is projectile, timer set to 100 so that it advances quicker when just fired
     sta     MAP,X             ; store projectile at current index + 1
-    DEX                         ; decrement X to bering its value back
+    dex                         ; decrement X to bering its value back
 label_j
     jmp     update_next_frame   ; leave
 p_scroll
@@ -308,7 +308,6 @@ update_next_frame
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
-
     lda     MAP,X               ;load the exist map element
     ;check existed element on map of the target cell
 update_next_frame_check_exist_ladder
@@ -345,12 +344,12 @@ update_next_frame_player
     ldx     #21
 add_life_symbol              ; puts add life symbols in line2
     lda     #9              ;a life symol
-    STA     MAP,X
-    INX
+    sta     MAP,X
+    inx
     lda     #0          ;a white space
-    INX
+    inx
     cpx     $0;
-    BNE     add_life_symbol
+    bne     add_life_symbol
 
 falling_event
     lda     X_POS
@@ -369,7 +368,7 @@ falling_event
 falling_counting 
     lda     STATUS
     and     #%00000111 ;load the timer value
-    cmp     #%111   ;chceck if it reached the timer
+    cmp     #%1   ;chceck if it reached the timer
     beq     falling_falls ;fall player if timer reach
     inc     STATUS  ;if not, increase timer by 1 
     jmp     proj_event
@@ -391,26 +390,26 @@ update_map_loop
     lda     MAP,X         ; load value of (0x1B04 + X) into A_reg
                             ; bitmask 0 from bits 765 to get the character array index
     tay                     ; save A_reg in Y, because we are going to destroy the original A_reg next line
-    AND     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
+    and     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
     sta     $09             ;store the projectile type for futrue useage
     cmp     #%00000100              ; is the object a projectile?
     beq     proj_update     ; update the projectile if it is one!
-    cmp     #%00000011          ;if this an enemy charging
+    cmp     #%00000011          ;if this an enemy charging  UNCOMMENT THESE 2 LINES TO MAKE ENEMY CHARGE AGAIN!
     beq     proj_update
 post_proj_update
-    INX                         
+    inx                         
     cpx     #$FC            ; is X == 0xFC?
     bne     update_map_loop ; if not, update next character. If X == 0xFC, fall through.
     jmp     draw            ; go to draw section
 
 proj_update                  
-    TYA                         ; restore A_reg
-    AND     #%11100000          ; get the the most significant 3 bits in A_reg (proj timer)
+    tya                         ; restore A_reg
+    and     #%11100000          ; get the the most significant 3 bits in A_reg (proj timer)
     cmp     #%11100000          ; is the proj timer == 111?
     beq     proj_move           ; if so, move proj
 
                                 ; else, add 1 to the last 3 bits, and store back to same tile.
-    TYA                         ; restore A_reg AGAIN (we ruined it by bitmasking)
+    tya                         ; restore A_reg AGAIN (we ruined it by bitmasking)
     clc                         ; clear carry before add
     adc     #%00100000          ; add "%00100000" to increase the bytes 765 value by "1"
     sta     MAP,X             ; store the updated value into corresponding map array position.
@@ -419,7 +418,7 @@ proj_update
 proj_move                       ; MOVE the projectile if its time has come (bits 765 == 111)
     txa                         ; transfer index (offset) to A in order to retrieve coordinates via routine
     jsr     index_to_coord      ; call routine, get (x, y) of index in X_TMP, Y_TMP
-    LDA     X_TMP               ; load X value of projectile coordinate for comparison
+    lda     X_TMP               ; load X value of projectile coordinate for comparison
     cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile. 
     beq     proj_gone
     cmp     #0
@@ -439,8 +438,8 @@ proj_right_move
     inx                         ; get index of tile right in front of projectile
 proj_check
     lda     MAP,X               ; load value of (0x1B04 + X) into A_reg
-    AND     #%00011111          ; bitmask 765 for comparison
-    CPY     #$03
+    and     #%00011111          ; bitmask 765 for comparison
+    cpy     #$03
     beq     proj_check_shoting_player
 proj_check_shoting_enemy
     cmp     #%00000011          ; is it an enemy (char 3)
@@ -459,7 +458,7 @@ proj_update_to_map_shoting_enemy
     ; else, advance projectile one tile forward (X is still incremented right now!!)
     lda     #%00000100          ; load projectile with timer 0 into A_reg
     sta     MAP,X               ; store projectile into the tile to the right of it
-    DEX                         ; set X back
+    dex                         ; set X back
     jmp     proj_upate_to_map_cleared_existed_projecticle
 proj_update_to_map_shoting_player
     lda      #%00000011         ; load projectile with timer 0 into A_reg
@@ -488,13 +487,16 @@ proj_hit_player
     jsr     event_life          ;make player lose life by one
     inx                         ;fall back  in order to remove proj
 proj_gone
-    LDA     #0      
+    lda     #0      
     sta     MAP,X               ; store 0 – whitespace, into where the projectile location.
     jmp     post_proj_update    ; go back to loop .
 
 
 
-
+    jsr     player_pos_to_tmp   ; store player position into the temporary positions
+    jsr     coord_to_index      ; get index into map array inside X_reg
+    lda     #2
+    sta     MAP,X             ; in case the player position changes. If it doesn't,
 
 draw    ; label to jump to when we want to skip to rendering step from some reason
 
@@ -502,19 +504,21 @@ draw    ; label to jump to when we want to skip to rendering step from some reas
         ; and writes the corresponsing character to screen memory.
         ; does not really matter that we are drawing stuff every frame, vic is too fast anyway (i think)
 
+    ; affter all the updates, the player might have been moved down by falling. Let's update the player coords in the map now.
+
     ldx     #0              ; loop counter init (count to 0xFC)
 drawloop
     lda     MAP,X         ; load value of (0x1B04 + X) into A_reg
                             ; bitmask 0 from bits 765 to get the character array index
-    AND     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
+    and     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
 ;   now that we have the character index in A_Reg, store that at corresponsing screen memory location
-    STA     $1e00,X         ; use same offset (X) for screen memory storage.
-    INX                         
+    sta     $1e00,X         ; use same offset (X) for screen memory storage.
+    inx                         
     cpx     #$FC            ; is X == 0xFC?
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #18             ; run waste time X times
+    ldx     #$30             ; run waste time X times
     jsr     waste_time
 
     jmp     loop            ; go back to very top of while loop
@@ -529,14 +533,14 @@ coord_to_index              ; routine to compute offset from MAP from x, y value
                             ; Modifies: A_reg, X_reg
                             ; formula is index(x,y) = 21y + x 
                             
-    LDX     Y_TMP           ; load Y_POS into X, use as loop counter when adding
-    LDA     #0
+    ldx     Y_TMP           ; load Y_POS into X, use as loop counter when adding
+    lda     #0
 y_mult_loop                 ; loop to compute A_reg = 21 * X
     cpx     #0              ; if x is 0, quit multiplication loop
     beq     add_x           
     clc                     ; clear carry before add
     adc     #21             ; add 21
-    DEX                     ; decrement X
+    dex                     ; decrement X
     jmp     y_mult_loop     ; go to top of loop
 add_x
     clc                     ; clc before add
@@ -550,16 +554,16 @@ index_to_coord              ; routine to compute (x, y) coordinates and store th
                             ; Input: map array index in A_reg
                             ; Output: X value in X_TMP, Y value in Y_TMP ZP locations.
                             ; Modifies: A_reg, Y_reg
-    LDY     #0              ; use Y_reg to count the Y coordinate
+    ldy     #0              ; use Y_reg to count the Y coordinate
 y_div_loop    
     cmp     #21             ; is A_reg less than 21?
     bcc     remainder       ; if it is, done with loop
-    INY                     ; add 1 to the y coordinate counter
+    iny                     ; add 1 to the y coordinate counter
     sec                     ; SET carry before subtraction (reverse (stupid)) !!!!!!
     sbc     #21             ; A_reg -= 21
     jmp     y_div_loop      ; repeat check now that A_reg is smaller
 remainder                   ; when we are here, we just have the remainder (x coordinate) left in A_reg
-    STA     X_TMP           ; store X coordinate in corresponding zero page location
+    sta     X_TMP           ; store X coordinate in corresponding zero page location
     STY     Y_TMP           ; store Y coordinate in corresponding zero page location
     rts                     ; return from routine
 
@@ -576,10 +580,10 @@ waste_time
 waste_time_loop_outer
     ldy     #0
 waste_time_loop_inner             
-    INY
-    CPY     $FF             ; waste time by counting up to 255 in Y reg
-    BNE     waste_time_loop_inner
-    DEX     
+    iny
+    cpy     $FF             ; waste time by counting up to 255 in Y reg
+    bne     waste_time_loop_inner
+    dex     
     cpx     #0
     bne     waste_time_loop_outer
     rts
@@ -708,27 +712,27 @@ set_life
 init            ; call routine in the beginning.
 
     ;       setting init values of player x y coords
-    LDA     #5
-    STA     X_POS
-    LDA     #10
-    STA     Y_POS
+    lda     #5
+    sta     X_POS
+    lda     #10
+    sta     Y_POS
 
 ;   Switching character set pointer to 0x1c00:
     lda     #255
-    STA     $9005 ; POKE 36869 255 (from book)
+    sta     $9005 ; POKE 36869 255 (from book)
 
 ;   Switching to 8x16 character set (setting bit 0 of 0x9003 to 1) 
-;   AND setting number of rows on screen to 12 (setting bits 1-6 of 0x9003 to 12)
+;   and setting number of rows on screen to 12 (setting bits 1-6 of 0x9003 to 12)
 ;   this gives us 252 or 0xFC characters displayed on screen at once - fits in one byte. (nice)
     lda     $9003           
     and     #%10000000      ; clear bits 0-6 
     ora     #%10011001      ; setting bit 0 to 1, bits 1-6 to 001100 (12)
-    STA     $9003           ; store it
+    sta     $9003           ; store it
 ;setting columns # to 21: (bits 0-6 of 0x9002 control the # of col)
     lda     $9002
     and     #%10000000  ; clear bits 0-6
     ora     #21         ; set bits 0-6 to #21 (# of columns)
-    STA     $9002
+    sta     $9002
 
 ; clearing screen in beginning of game (writing char 00 to all 252 tiles)
     lda     #0          ; selecting char 0 
@@ -736,20 +740,20 @@ init            ; call routine in the beginning.
     stx     C_COL       ; 0 initialized variables:
     stx     MAP_READ_PTR
 whitescreen             ; probably change this to a JSRable function later 
-    STA     MAP,X
-    INX     
+    sta     MAP,X
+    inx     
     cpx     #$FC    ; 252 (size of screen) the execution falls through when x == 252
-    BNE     whitescreen
+    bne     whitescreen
 
 ;   Next, fill 0x9600 - 0x96FC (color RAM) with $00 (turn them all on, black color)
     lda     #$00
     ldx     #$00
 color_ram 
-    STA     $9600,X
-    INX   
+    sta     $9600,X
+    inx   
     cpx     #$FC
-    BNE     color_ram
-    STA     $9600,X
+    bne     color_ram
+    sta     $9600,X
 status_init
     lda     #%00011000      ; iniital life of 3,other flags to be 0
     sta     STATUS
@@ -766,14 +770,14 @@ ror_loop
     and     #%00000001      ; bit mask testing for last bit of the byte
     bne     ror_set         ; if zero flag is 0, need to set carry, else fall through
 
-    CLC                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)   
     jmp     ror_p2
 ror_set                     ; set carry cause bit was 1 (if)
-    SEC
+    sec
 
 ror_p2
     ror     $1c50,X
-    INX
+    inx
     cpx     #16
     bne     ror_loop
     rts
@@ -785,14 +789,14 @@ rol_loop
     lda     $1c50,X            ; 1c50 is char 5 (clouds)
     and     #%10000000      ; bit mask testing for last bit of the byte
     bne     rol_set         ; if zero flag is 0, need to set carry, else fall through
-    CLC                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)   
     jmp     rol_p2
 rol_set                     ; set carry cause bit was 1 (if)
-    SEC
+    sec
 
 rol_p2
     rol     $1c50,X
-    INX     
+    inx     
     cpx     #16
     bne     rol_loop
     rts
@@ -890,7 +894,7 @@ read_column        ; routine to read the next column in from the map.
                             ; Modifies: A_reg, Y_reg, X_reg
     ; first fill with air:
     lda     #0
-    TAY     ;y as counter to go through 0 to 7 y value!
+    tay     ;y as counter to go through 0 to 7 y value!
 col_blank_fill
     sta     TMP_COL,Y
     iny
@@ -966,27 +970,15 @@ scroll_one_col_shift_loop ; this loop applies MAP[X] = MAP[X + 1] (C syntax)
     cpx     #251    ; if we are at last tile, fall through. else, jump back up.
     bne     scroll_one_col_shift_loop
     
-
+    dec     X_POS
+    lda     X_POS           ; load X_POS into A_reg (this sets the negative flag if it was negative!)
+    bmi     neg_x_scroll_func          ; branch if X_POS is negative, i.e X_POS = FF because we just did X_POS = 0 - 1
+    jmp     x_notneg
+neg_x_scroll_func
+    inc     X_POS           ; no jmp here, just fall through.
+x_notneg    
 
     jsr     read_column         ; read a column and place it into TMP_COL[8] array
-    ; ldx     #0
-    ; lda     #8
-    ; sta     TMP_COL,X
-    ; inx     
-    ; sta     TMP_COL,X
-    ; inx     
-    ; sta     TMP_COL,X
-    ; inx     
-    ; sta     TMP_COL,X
-    ; inx     
-    ; sta     TMP_COL,X
-    ; inx     
-    ; sta     TMP_COL,X
-    ; inx 
-    ; sta     TMP_COL,X
-    ; inx 
-    ; sta     TMP_COL,X
-
     jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
 
