@@ -242,7 +242,7 @@ j_shoot
 label_j
     jmp     update_next_frame   ; leave
 p_scroll
-    jsr     set_scroll_flag
+    dec     SCROLLING_FLAG      ; set scrolling flag to 0 (start scrolling)
     jmp     update_next_frame
 a_left
     ldy     #$0                 ;check move left flag
@@ -898,10 +898,6 @@ draw_ladder_test
     sta     MAP,X
     rts
 
-set_scroll_flag     ; function to call to set scroll flag (optimize later)
-    lda     #0
-    sta     SCROLLING_FLAG
-    rts
 
 scroll_one_col_with_scroll_flag
     ldx     X_POS           ; load X_POS into X_reg (this sets the negative flag if it was negative!)
@@ -909,10 +905,8 @@ scroll_one_col_with_scroll_flag
     jsr     scroll_one_column
     jmp     scroll_one_col_with_scroll_flag__continue
 scroll_one_col_with_scroll_flag__end_scroll
-    inx     ; set X_reg to 1
-    stx     SCROLLING_FLAG  ; set SCROLLING_FLAG to 1 (NOT scrolling)
+    inc     SCROLLING_FLAG      ; set scrolling flag to 1 (no scroll)
 scroll_one_col_with_scroll_flag__continue
-
     ; put player back on map for animation
     jsr     player_pos_to_tmp   ; store player position into the temporary positions
     jsr     coord_to_index      ; get index into map array inside X_reg
