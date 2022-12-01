@@ -11,8 +11,9 @@ X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used i
 Y_TMP  =    $24     ; ZP 0x24: temp variable for Y coordinate value. only used in index -> coordinate routine right now.
 STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit prev ladder symbol][2bit life][3bit counter for falling down]
 
-C_COL           =    $30     ; current column variable (which column are we on?)
-MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+C_COL           =   $30     ; current column variable (which column are we on?)
+MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
+SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
 
 MAP     =    $1b04   ; map array pointer.
@@ -180,7 +181,16 @@ refresh_player_position_draw_prev_cell
 refresh_player_position_clear; clear the status correspoinding bits
     lda     STATUS
     and     #%10011111
-    sta     STATUS                            
+    sta     STATUS   
+
+    ; check if SCROLLING_FLAG =! 0 
+    ; when SCROLLING_FLAG == 0, we want to disable player input, and scroll until the player is on leftmost column of the screen
+    lda     SCROLLING_FLAG
+    bne     get_input       ; if not scrolling, go to input as usual
+    ; if we fell through, need to scroll, and then go straight to draw call afterwards
+    jmp     scroll_one_col_with_scroll_flag
+
+get_input
 ;-----
 ; GET PLAYER INPUT!
 ;-----
@@ -197,9 +207,9 @@ refresh_player_position_clear; clear the status correspoinding bits
     beq     s_down
     cmp     #20         ; if J is pressed
     beq     j_shoot
-    cmp     #50         ;T for Test purpose
+    cmp     #50         ; T for Test purpose
     beq     test_code
-    cmp     #13
+    cmp     #13         ; P for scroll 
     beq     p_scroll
     jmp     update_next_frame
 
@@ -232,7 +242,7 @@ j_shoot
 label_j
     jmp     update_next_frame   ; leave
 p_scroll
-    jsr     scroll_one_column
+    jsr     set_scroll_flag
     jmp     update_next_frame
 a_left
     ldy     #$0                 ;check move left flag
@@ -735,10 +745,14 @@ init            ; call routine in the beginning.
     sta     $9002
 
 ; clearing screen in beginning of game (writing char 00 to all 252 tiles)
-    lda     #0          ; selecting char 0 
-    ldx     #0          ; loop counter
-    stx     C_COL       ; 0 initialized variables:
+    lda     #0              ; selecting char 0 
+    ldx     #0              ; loop counter
+    stx     C_COL           ; 0 initialized variables:
     stx     MAP_READ_PTR
+    inx     
+    stx     SCROLLING_FLAG  ; initialize scrolling flag with 1 (not scrolling)
+    dex                     ; bring x back to 0 for loop
+
 whitescreen             ; probably change this to a JSRable function later 
     sta     MAP,X
     inx     
@@ -884,7 +898,28 @@ draw_ladder_test
     sta     MAP,X
     rts
 
+set_scroll_flag     ; function to call to set scroll flag (optimize later)
+    lda     #0
+    sta     SCROLLING_FLAG
+    rts
 
+scroll_one_col_with_scroll_flag
+    ldx     X_POS           ; load X_POS into X_reg (this sets the negative flag if it was negative!)
+    beq     scroll_one_col_with_scroll_flag__end_scroll     ; x position is 0 (exit loop)
+    jsr     scroll_one_column
+    jmp     scroll_one_col_with_scroll_flag__continue
+scroll_one_col_with_scroll_flag__end_scroll
+    inx     ; set X_reg to 1
+    stx     SCROLLING_FLAG  ; set SCROLLING_FLAG to 1 (NOT scrolling)
+scroll_one_col_with_scroll_flag__continue
+
+    ; put player back on map for animation
+    jsr     player_pos_to_tmp   ; store player position into the temporary positions
+    jsr     coord_to_index      ; get index into map array inside X_reg
+    lda     #2
+    sta     MAP,X             ; in case the player position changes. If it doesn't,
+
+    jmp     draw
 
 
 ;   read column function: reads a column in from the map array and puts it into TMP_COL array.
