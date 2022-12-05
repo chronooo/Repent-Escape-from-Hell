@@ -330,9 +330,7 @@ update_next_frame
     lda     MAP,X               ;load the exist map element
     ;check existed element on map of the target cell
 
-    lda     CURKEY          ;Checking if the player is idle
-    cmp     #64
-    beq     update_next_frame_player_idle
+    
 
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
@@ -352,46 +350,40 @@ update_next_frame_check_exist_ladder_connector
 update_next_frame_draw_man_over_ladder
     lda     #8
     jmp     update_next_frame_player
+update_next_frame_exist_air
+    lda     CURKEY          ;Checking if the player is idle
+    cmp     #64
+    beq     update_next_frame_player_idle
+    lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
+    jmp     update_next_frame_player
+
 update_next_frame_player_idle 
 
     lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
-    cmp     #0          ; If frame 1 
-    beq     idle_frame_1
-    cmp     #1          ; If frame 1 
-    beq     idle_frame_1
-    cmp     #2          ; If frame 1 
-    beq     idle_frame_1
-    cmp     #3          ; If frame 1 
-    beq     idle_frame_1
-    cmp     #4
-    beq     idle_frame_2
-    cmp     #5
-    beq     idle_frame_2
-    cmp     #6
-    beq     idle_frame_2
-    cmp     #7
-    beq     idle_frame_2
+    cmp     #8          ;Check if weve been in the idle animation 1 for 8 frames
+    bcc     idle_frame_1 ; if we havent render idle frame 1
+    jmp     idle_frame_2 ; if we have start rendering idle frame 2
 
 idle_frame_1
-    inc     ANIMCOUNTER
-    lda     #10
-    jmp     update_next_frame
+    inc     ANIMCOUNTER 
+    lda     #10         ; pos of idle frame  1 for player
+    jmp     update_next_frame_player
 resetAnimCounter
     lda     #0
     sta     ANIMCOUNTER
-    jmp     idle_frame_3
+    jmp     idle_frame_3 ; After resetting render idle frame 2 one more time
 
 idle_frame_2
     inc     ANIMCOUNTER
     lda     ANIMCOUNTER 
-    cmp     #8 
+    cmp     #16         ;If weve spent 8 frames in idle frame 2 reset counter
+                        ; and go back to idle frame 1
     beq     resetAnimCounter 
 
 idle_frame_3
     lda     #11
     jmp     update_next_frame_player
-update_next_frame_exist_air
-    lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
+
 update_next_frame_player
     sta     MAP,X             ; store it at the player's position
 
