@@ -5,6 +5,7 @@ CHROUT =    $ffd2
 CHRIN  =    $ffcf
 CURKEY =    $00c5
 ;   ZERO PAGE MACROS
+ANIMCOUNTER = $20   ; Current animation loop
 X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used in index -> coordinate routine right now.
@@ -15,6 +16,11 @@ C_COL           =   $30     ; current column variable (which column are we on?)
 MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
 SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+
+;   SYMBOLIC CONSTANTS FOR MODELS
+
+PLAYER_IDLE1    =   #10 
+PLAYER_IDLE2    =   #11 
 
 MAP     =    $1b04   ; map array pointer.
 TMP_COL =    $1afc   ; where column is loaded when map array is read
@@ -116,6 +122,9 @@ start
     lda     #0 
     ldx     #0 
     ldy     #0
+    sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
+                        ; This is how we keep track of whether to use frame 1 or 2
+                        ; For our movement animations
     jsr     init
 
 ;   loop to set the bottom row of the characters to character 00001, written to map array
@@ -320,6 +329,11 @@ update_next_frame
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
     lda     MAP,X               ;load the exist map element
     ;check existed element on map of the target cell
+
+    lda     CURKEY          ;Checking if the player is idle
+    cmp     #64
+    beq     update_next_frame_player_idle
+
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
     bne     update_next_frame_check_exist_ladder_connector
@@ -337,6 +351,44 @@ update_next_frame_check_exist_ladder_connector
     sta     STATUS
 update_next_frame_draw_man_over_ladder
     lda     #8
+    jmp     update_next_frame_player
+update_next_frame_player_idle 
+
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    cmp     #0          ; If frame 1 
+    beq     idle_frame_1
+    cmp     #1          ; If frame 1 
+    beq     idle_frame_1
+    cmp     #2          ; If frame 1 
+    beq     idle_frame_1
+    cmp     #3          ; If frame 1 
+    beq     idle_frame_1
+    cmp     #4
+    beq     idle_frame_2
+    cmp     #5
+    beq     idle_frame_2
+    cmp     #6
+    beq     idle_frame_2
+    cmp     #7
+    beq     idle_frame_2
+
+idle_frame_1
+    inc     ANIMCOUNTER
+    lda     #10
+    jmp     update_next_frame
+resetAnimCounter
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     idle_frame_3
+
+idle_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER 
+    cmp     #8 
+    beq     resetAnimCounter 
+
+idle_frame_3
+    lda     #11
     jmp     update_next_frame_player
 update_next_frame_exist_air
     lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
@@ -1239,3 +1291,41 @@ map1
     dc.b    #%00000000
     dc.b    #%00000000
     dc.b    #%00000000
+
+    ;       CHAR 10 PLAYER IDLE 1
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%10101100
+    dc.b    #%00100100
+    dc.b    #%00100000
+    dc.b    #%01010000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    ;       CHAR 11 PLAYER IDLE 2
+    dc.b    #%00000000
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%01101100
+    dc.b    #%00100100
+    dc.b    #%01110000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    
