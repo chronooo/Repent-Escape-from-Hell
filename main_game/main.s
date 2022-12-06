@@ -386,7 +386,65 @@ update_next_frame_exist_air
     lda     CURKEY          ;Checking if the player is idle
     cmp     #64
     beq     update_next_frame_player_idle
+    cmp     #18      ;Check if player is moving right (D)
+    beq     update_next_frame_player_right
+    cmp     #17     ;check if player is moving left (A)
+    beq     update_next_frame_player_left
     lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
+    jmp     update_next_frame_player
+
+update_next_frame_player_right
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
+    bcc     right_frame_1 ; if we havent render right frame 1
+    jmp     right_frame_2 ; if we have start rendering right frame 2
+
+right_frame_1 
+    inc     ANIMCOUNTER 
+    lda     #2         ; pos of right frame  1 for player
+    jmp     update_next_frame_player
+
+resetRunCounter
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     right_frame_3 ; After resetting render right frame 2 one more time
+
+right_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER 
+    cmp     #16         ;If weve spent 8 frames in right frame 2 reset counter
+                        ; and go back to right frame 1
+    beq     resetRunCounter 
+
+right_frame_3
+    lda     #14
+    jmp     update_next_frame_player
+
+update_next_frame_player_left
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
+    bcc     left_frame_1 ; if we havent render left frame 1
+    jmp     left_frame_2 ; if we have start rendering left frame 2
+
+left_frame_1 
+    inc     ANIMCOUNTER 
+    lda     #15         ; pos of left frame  1 for player
+    jmp     update_next_frame_player
+
+resetRunCounter2
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     left_frame_3 ; After resetting render left frame 2 one more time
+
+left_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER 
+    cmp     #16         ;If weve spent 8 frames in left frame 2 reset counter
+                        ; and go back to left frame 1
+    beq     resetRunCounter2 
+
+left_frame_3
+    lda     #16     ; left frame 2
     jmp     update_next_frame_player
 
 update_next_frame_player_idle 
@@ -604,7 +662,7 @@ drawloop
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #$30             ; run waste time X times
+    ldx     #$90             ; run waste time X times
     jsr     waste_time
 
     jsr     audio_update    ; update the audio after wasting time so it plays for a bit longer
@@ -1231,23 +1289,23 @@ map1
     dc.b    #%00000000
     dc.b    #%00000000
 
-    ;       CHAR 02 - PLAYER placeholder
-    dc.b    #%11111111
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10010001
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
-    dc.b    #%10111101
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%11111111
-    dc.b    #%11111111
+    ;       CHAR 02 - PLAYER running right 1
+    dc.b    #%00111100
+    dc.b    #%00111111
+    dc.b    #%00100010
+    dc.b    #%00100110
+    dc.b    #%00100010
+    dc.b    #%00010100
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00011000
+    dc.b    #%00101100
+    dc.b    #%11101010
+    dc.b    #%00101000
+    dc.b    #%00101100
+    dc.b    #%00010100
+    dc.b    #%00100010
 
     ;       CHAR 03 - PLAYER SAD placeholder (lol)
     dc.b    #%11111111
@@ -1450,3 +1508,57 @@ map1
     dc.b    #%11100111
     dc.b    #%11111111
     dc.b    #%11000011
+
+    ;       Char 14 player running right 2 (1 is at pos 2)
+    dc.b    #%00111100
+    dc.b    #%00111111
+    dc.b    #%00100010
+    dc.b    #%00100110
+    dc.b    #%00100010
+    dc.b    #%00010100
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00011000
+    dc.b    #%00101101
+    dc.b    #%11101010
+    dc.b    #%00101000
+    dc.b    #%00110100
+    dc.b    #%00010100
+    dc.b    #%00100010
+
+    ;       Char 15 player running left 1
+    dc.b    #%00111100
+    dc.b    #%11111100
+    dc.b    #%01000100
+    dc.b    #%01100100
+    dc.b    #%01000100
+    dc.b    #%00101000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00011000
+    dc.b    #%00110100
+    dc.b    #%01010111
+    dc.b    #%00010100
+    dc.b    #%00110100
+    dc.b    #%00101000
+    dc.b    #%01000100
+    
+    ;       Char 16 player running left 2
+    dc.b    #%00111100
+    dc.b    #%11111100
+    dc.b    #%01000100
+    dc.b    #%01100100
+    dc.b    #%01000100
+    dc.b    #%00101000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00011000
+    dc.b    #%10110100
+    dc.b    #%01010111
+    dc.b    #%00010100
+    dc.b    #%00101100
+    dc.b    #%00101000
+    dc.b    #%01000100    
