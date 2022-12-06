@@ -313,7 +313,37 @@ neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to
 
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
+
 update_next_frame
+
+falling_event
+    jsr     player_pos_to_tmp
+    inc     Y_TMP
+    jsr     coord_to_index
+    lda     MAP,X
+    cmp     #0      ;check the cell below player
+    beq     falling_counting
+    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
+    and     #%11111000
+    sta     STATUS
+    jmp     falling_skip
+falling_counting
+    lda     STATUS
+    and     #%00000111 ;load the timer value
+    cmp     #%1   ;chceck if it reached the timer
+    beq     falling_falls ;fall player if timer reach
+    inc     STATUS  ;if not, increase timer by 1
+    jmp     falling_skip
+falling_falls
+    inc     Y_POS
+    ;jsr     coord_to_index
+    ;lda     #0             ;load air
+    ;sta     MAP,X          ;store the air to the position before
+    ;inc     Y_POS
+    lda     STATUS
+    and     #%11111000 ;reset the timer back to 000
+    sta     STATUS
+falling_skip
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
@@ -355,8 +385,6 @@ update_next_frame_exist_air
 update_next_frame_player
     sta     MAP,X             ; store it at the player's position
 
-
-
 life_status_update
     ;   showing number of lifes available at the top
     ;   loop to set the bottom row of the characters to character 00001, written to map array
@@ -376,36 +404,6 @@ add_life_symbol              ; puts add life symbols in line2
     cpx     $0;
     bne     add_life_symbol
 
-falling_event
-    lda     X_POS
-    sta     X_TMP
-    lda     Y_POS
-    sta     Y_TMP
-    inc     Y_TMP
-    jsr     coord_to_index
-    lda     MAP,X
-    cmp     #0      ;check the cell below player
-    beq     falling_counting
-    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
-    and     #%11111000
-    sta     STATUS
-    jmp     proj_event
-falling_counting
-    lda     STATUS
-    and     #%00000111 ;load the timer value
-    cmp     #%1   ;chceck if it reached the timer
-    beq     falling_falls ;fall player if timer reach
-    inc     STATUS  ;if not, increase timer by 1
-    jmp     proj_event
-falling_falls
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #0             ;load air
-    sta     MAP,X          ;store the air to the position before
-    inc     Y_POS
-    lda     STATUS
-    and     #%11111000 ;reset the timer back to 000
-    sta     STATUS
 
 proj_event
     ;   important: do not destroy value of X during the tile updates. we are using it to iterate thru the array.
