@@ -197,6 +197,10 @@ get_input
     lda     CURKEY       ; loads the current pressed key from memory
     cmp     #10         ; if R is pressed, restart whole program
     beq     start
+    cmp     #50         ; T for Test purpose [test code]
+    beq     test_entry
+    cmp     #35         ; B for entering god modes swtich
+    beq     god_mode_switch
     cmp     #17         ; if A is pressed
     beq     a_left
     cmp     #18         ; if D is pressed
@@ -207,25 +211,29 @@ get_input
     beq     s_down
     cmp     #20         ; if J is pressed
     beq     j_shoot
-    cmp     #50         ; T for Test purpose
-    beq     test_code
     cmp     #13         ; P for scroll
     beq     p_scroll
     jmp     update_next_frame
 
 exit_prg
     rts
-test_code       ;[temporary code]
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X
-    ldx     #142
-    sta     MAP,X
-    ldx     #208
-    sta     MAP,X
-    ldx     #82
-    sta     MAP,X
+test_entry       ;[temporary code]
+    jsr     test_code
+    jmp     update_next_frame
+god_mode_switch
+    lda     STATUS
+    and     #%10000000
+    cmp     #%10000000
+    beq     god_mode_off
+god_mode_on
+    lda     STATUS
+    ora     #%10000000
+    jmp     god_mode_store
+god_mode_off
+    lda     STATUS
+    and     #%01111111
+god_mode_store
+    sta     STATUS
     jmp     update_next_frame
 j_shoot
     lda     X_POS               ; load X_POS into A_reg
@@ -336,10 +344,6 @@ falling_counting
     jmp     falling_skip
 falling_falls
     inc     Y_POS
-    ;jsr     coord_to_index
-    ;lda     #0             ;load air
-    ;sta     MAP,X          ;store the air to the position before
-    ;inc     Y_POS
     lda     STATUS
     and     #%11111000 ;reset the timer back to 000
     sta     STATUS
@@ -359,9 +363,9 @@ event_object_inrease_life
     cmp     #9 ;heart
     bne     event_object_handling_done
     jsr     event_life_increase_life
-;nxt
+;next object event
 event_object_handling_done
-    ;check existed element on map of the target cell
+    ;check existed element on map bttof the target cell
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
     bne     update_next_frame_check_exist_ladder_connector
@@ -404,6 +408,7 @@ add_life_symbol              ; puts add life symbols in line2
     cpx     $0;
     bne     add_life_symbol
 
+    
 
 proj_event
     ;   important: do not destroy value of X during the tile updates. we are using it to iterate thru the array.
@@ -689,16 +694,23 @@ event_life_increase_life
 event_life_increase_life_skip
     rts
 event_life_lose_life
+    lda     STATUS
+    and     #%10000000
+    cmp     #%10000000
+    bne     event_life_lose_life_skip
     jsr     load_life
     cmp     #$1
     beq     event_game_over     ;last life lost result in game over.
     tay
     dey
     jsr     set_life
+event_life_lose_life_skip
     rts
 ;---
 ; function for displaying game over, still under construction
 ;---
+
+
 event_game_over
     jmp     start
 
@@ -920,6 +932,18 @@ draw_ladder_test
     sta     MAP,X
     rts
 
+test_code ;[test purpose code,need to be removed at the end
+        ; init sad guys (for testing)
+    lda     #3
+    ldx     #101
+    sta     MAP,X
+    ldx     #142
+    sta     MAP,X
+    ldx     #208
+    sta     MAP,X
+    ldx     #82
+    sta     MAP,X
+    rts
 
 scroll_one_col_with_scroll_flag
     ldx     X_POS           ; load X_POS into X_reg (this sets the negative flag if it was negative!)
