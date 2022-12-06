@@ -14,7 +14,17 @@ STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit pre
 C_COL           =   $30     ; current column variable (which column are we on?)
 MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
 SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
+AUDIO_TIMER     =   $33     ; audio flag to keep track of the audio playback. 
+
+
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+
+;   Audio SPEAKERS
+AU_VOL =    36878   ; 0 to 15
+AU_LOW =    36874   ; 128 to 255
+AU_MID =    36875   ; 128 to 255
+AU_HI  =    36876   ; 128 to 255
+AU_NO  =    36877   ; 128 to 255
 
 MAP     =    $1b04   ; map array pointer.
 TMP_COL =    $1afc   ; where column is loaded when map array is read
@@ -228,6 +238,7 @@ test_code       ;[temporary code]
     sta     MAP,X     
     jmp     update_next_frame
 j_shoot
+    jsr     audio_shoot
     lda     X_POS               ; load X_POS into A_reg
     cmp     #20                 ; cannot spawn projectil if we are on the rightmost block
     beq     label_j   ; skip if x == 20
@@ -531,6 +542,7 @@ drawloop
     ldx     #$30             ; run waste time X times
     jsr     waste_time
 
+    jsr     audio_update    ; update the audio after wasting time so it plays for a bit longer
     jmp     loop            ; go back to very top of while loop
 
 ;*************************************
@@ -721,6 +733,10 @@ set_life
 ;***********************************
 init            ; call routine in the beginning.
 
+    ; setting audio speakers volume
+    lda     #15
+    STA     AU_VOL ; POKE 36878 15 (from book)
+
     ;       setting init values of player x y coords
     lda     #5
     sta     X_POS
@@ -749,6 +765,7 @@ init            ; call routine in the beginning.
     ldx     #0              ; loop counter
     stx     C_COL           ; 0 initialized variables:
     stx     MAP_READ_PTR
+    stx     AUDIO_TIMER
     inx     
     stx     SCROLLING_FLAG  ; initialize scrolling flag with 1 (not scrolling)
     dex                     ; bring x back to 0 for loop
@@ -922,6 +939,7 @@ read_column        ; routine to read the next column in from the map.
                             ; Output: TMP_COL[8] will contain the characters of the column just read
                             ; Modifies: A_reg, Y_reg, X_reg
     ; first fill with air:
+    jsr     audio_scroll
     lda     #0
     tay     ;y as counter to go through 0 to 7 y value!
 col_blank_fill
@@ -1011,6 +1029,62 @@ x_notneg
     jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
 
+; audio routines
+; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
+audio_noise ; activate the audio playback for noise oscilator
+    lda     AUDIO_TIMER
+    bne     audio_noise_quit            ; if not 0, dont play
+    lda     #128
+    STA     AU_NO  ; start playing noise
+    inc     AUDIO_TIMER
+
+
+
+audio_noise_quit
+    rts
+
+audio_scroll ; activate the audio playback for noise oscilator
+    lda     AUDIO_TIMER
+    bne     audio_scroll_quit            ; if not 0, dont play
+    ; lda     #128
+    ; STA     AU_HI ; play a tone on the speaker
+    lda     #212
+    STA     AU_HI ; play a tone on the speaker
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+
+
+
+
+audio_scroll_quit
+    rts
+
+audio_shoot ; activate the audio playback for note oscilator
+    lda     AUDIO_TIMER
+    bne     audio_shoot_quit            ; if not 0, dont play
+    lda     #240
+    STA     AU_HI ; play a tone on the speaker
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+
+audio_shoot_quit
+    rts
+
+audio_update        ;; call this at the end of every frame to update audio
+    lda     AUDIO_TIMER
+    beq     audio_update_done
+    ; else dec
+    dec     AUDIO_TIMER
+    STA     AU_NO ; POKE 36878 15 (from book)
+    STA     AU_HI ; POKE 36878 15 (from book)
+    beq     audio_update_done ; if it is 0, then no sounds are playing, so we do not need to do anything
+    ; else!
+    ; eor     #%00000001  ; check for 
+
+audio_update_done
+    rts
 
 /*
 ;   END OF CODE, START OF DATA
