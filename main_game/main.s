@@ -5,7 +5,8 @@ CHROUT =    $ffd2
 CHRIN  =    $ffcf
 CURKEY =    $00c5
 ;   ZERO PAGE MACROS
-ANIMCOUNTER = $20   ; Current animation loop
+MOVCOUNTER = $19  ; Which climbing animation to use
+ANIMCOUNTER = $20   ; Current animation loop used for idle animation
 X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used in index -> coordinate routine right now.
@@ -123,6 +124,7 @@ start
     ldx     #0 
     ldy     #0
     sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
+    sta     MOVCOUNTER
                         ; This is how we keep track of whether to use frame 1 or 2
                         ; For our movement animations
     jsr     init
@@ -319,7 +321,6 @@ pos_x
 neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     X_POS           ; no jmp here, just fall through.
 
-
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
 update_next_frame
@@ -348,8 +349,30 @@ update_next_frame_check_exist_ladder_connector
     ora     #%01000000      ;*10*****; store ladder connector to status
     sta     STATUS
 update_next_frame_draw_man_over_ladder
-    lda     #8
+    lda     MOVCOUNTER
+    cmp     #8
+    bcc     climb_frame_1
+    jmp     climb_frame_counter_check
+
+climb_frame_1 
+    lda     #12
+    inc     MOVCOUNTER ; key pressed so change movement counter 
     jmp     update_next_frame_player
+
+climb_frame_counter_check 
+    lda     MOVCOUNTER
+    cmp     #16
+    beq     reset_mov_counter
+    lda     #13
+    inc     MOVCOUNTER ; key pressed so change movement counter 
+    jmp     update_next_frame_player
+
+reset_mov_counter 
+    lda     #0
+    sta     MOVCOUNTER
+    lda     #13
+    jmp     update_next_frame_player
+
 update_next_frame_exist_air
     lda     CURKEY          ;Checking if the player is idle
     cmp     #64
@@ -1320,4 +1343,38 @@ map1
     dc.b    #%10001000
     dc.b    #%10001000
 
-    
+    ;       CHAR 12 PLAYER CLIMBING 1
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11111011
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11111011
+    dc.b    #%11010111
+    dc.b    #%11111011
+    dc.b    #%11010011
+    dc.b    #%11010011
+    dc.b    #%11111111
+    dc.b    #%11100111
+    dc.b    #%11100011
+    dc.b    #%11111111
+    dc.b    #%11000011
+
+    ;       CHAR 13 PLAYER CLIMBING 2
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11011111
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11011111
+    dc.b    #%11101011
+    dc.b    #%11011111
+    dc.b    #%11001011
+    dc.b    #%11001011
+    dc.b    #%11111111
+    dc.b    #%11010111
+    dc.b    #%11100111
+    dc.b    #%11111111
+    dc.b    #%11000011
