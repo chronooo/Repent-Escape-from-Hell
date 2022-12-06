@@ -5,6 +5,8 @@ CHROUT =    $ffd2
 CHRIN  =    $ffcf
 CURKEY =    $00c5
 ;   ZERO PAGE MACROS
+MOVCOUNTER = $19  ; Which climbing animation to use
+ANIMCOUNTER = $20   ; Current animation loop used for idle animation
 X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used in index -> coordinate routine right now.
@@ -25,6 +27,8 @@ AU_LOW =    36874   ; 128 to 255
 AU_MID =    36875   ; 128 to 255
 AU_HI  =    36876   ; 128 to 255
 AU_NO  =    36877   ; 128 to 255
+
+
 
 MAP     =    $1b04   ; map array pointer.
 TMP_COL =    $1afc   ; where column is loaded when map array is read
@@ -126,6 +130,10 @@ start
     lda     #0 
     ldx     #0 
     ldy     #0
+    sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
+    sta     MOVCOUNTER
+                        ; This is how we keep track of whether to use frame 1 or 2
+                        ; For our movement animations
     jsr     init
 
 ;   loop to set the bottom row of the characters to character 00001, written to map array
@@ -321,7 +329,6 @@ pos_x
 neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     X_POS           ; no jmp here, just fall through.
 
-
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
 update_next_frame
@@ -331,6 +338,9 @@ update_next_frame
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
     lda     MAP,X               ;load the exist map element
     ;check existed element on map of the target cell
+
+    
+
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
     bne     update_next_frame_check_exist_ladder_connector
@@ -347,10 +357,65 @@ update_next_frame_check_exist_ladder_connector
     ora     #%01000000      ;*10*****; store ladder connector to status
     sta     STATUS
 update_next_frame_draw_man_over_ladder
-    lda     #8
+    
+    lda     MOVCOUNTER      ;Check the movement counter to see what model to use
+    cmp     #8              ;if we spent less than 8 frames in model 1 load it
+    bcc     climb_frame_1
+    jmp     climb_frame_counter_check ; load model 2 instead for 8 frames
+
+climb_frame_1 
+    lda     #12         ; climbing model 1
+    inc     MOVCOUNTER ; key pressed so change movement counter 
     jmp     update_next_frame_player
+
+climb_frame_counter_check 
+    lda     MOVCOUNTER
+    cmp     #16             ;if model 2 is loaded for remaining 8 frames reset to 0
+    beq     reset_mov_counter
+    lda     #13
+    inc     MOVCOUNTER ; key pressed so change movement counter 
+    jmp     update_next_frame_player
+
+reset_mov_counter 
+    lda     #0
+    sta     MOVCOUNTER
+    lda     #13
+    jmp     update_next_frame_player
+
 update_next_frame_exist_air
+    lda     CURKEY          ;Checking if the player is idle
+    cmp     #64
+    beq     update_next_frame_player_idle
     lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
+    jmp     update_next_frame_player
+
+update_next_frame_player_idle 
+
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    cmp     #8          ;Check if weve been in the idle animation 1 for 8 frames
+    bcc     idle_frame_1 ; if we havent render idle frame 1
+    jmp     idle_frame_2 ; if we have start rendering idle frame 2
+
+idle_frame_1
+    inc     ANIMCOUNTER 
+    lda     #10         ; pos of idle frame  1 for player
+    jmp     update_next_frame_player
+resetAnimCounter
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     idle_frame_3 ; After resetting render idle frame 2 one more time
+
+idle_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER 
+    cmp     #16         ;If weve spent 8 frames in idle frame 2 reset counter
+                        ; and go back to idle frame 1
+    beq     resetAnimCounter 
+
+idle_frame_3
+    lda     #11
+    jmp     update_next_frame_player
+
 update_next_frame_player
     sta     MAP,X             ; store it at the player's position
 
@@ -1313,3 +1378,75 @@ map1
     dc.b    #%00000000
     dc.b    #%00000000
     dc.b    #%00000000
+
+    ;       CHAR 10 PLAYER IDLE 1
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%10101100
+    dc.b    #%00100100
+    dc.b    #%00100000
+    dc.b    #%01010000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    ;       CHAR 11 PLAYER IDLE 2
+    dc.b    #%00000000
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%01101100
+    dc.b    #%00100100
+    dc.b    #%01110000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    ;       CHAR 12 PLAYER CLIMBING 1
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11111011
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11111011
+    dc.b    #%11010111
+    dc.b    #%11111011
+    dc.b    #%11010011
+    dc.b    #%11010011
+    dc.b    #%11111111
+    dc.b    #%11100111
+    dc.b    #%11100011
+    dc.b    #%11111111
+    dc.b    #%11000011
+
+    ;       CHAR 13 PLAYER CLIMBING 2
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11011111
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11011111
+    dc.b    #%11101011
+    dc.b    #%11011111
+    dc.b    #%11001011
+    dc.b    #%11001011
+    dc.b    #%11111111
+    dc.b    #%11010111
+    dc.b    #%11100111
+    dc.b    #%11111111
+    dc.b    #%11000011
