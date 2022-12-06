@@ -349,19 +349,20 @@ update_next_frame_check_exist_ladder_connector
     ora     #%01000000      ;*10*****; store ladder connector to status
     sta     STATUS
 update_next_frame_draw_man_over_ladder
-    lda     MOVCOUNTER
-    cmp     #8
+    
+    lda     MOVCOUNTER      ;Check the movement counter to see what model to use
+    cmp     #8              ;if we spent less than 8 frames in model 1 load it
     bcc     climb_frame_1
-    jmp     climb_frame_counter_check
+    jmp     climb_frame_counter_check ; load model 2 instead for 8 frames
 
 climb_frame_1 
-    lda     #12
+    lda     #12         ; climbing model 1
     inc     MOVCOUNTER ; key pressed so change movement counter 
     jmp     update_next_frame_player
 
 climb_frame_counter_check 
     lda     MOVCOUNTER
-    cmp     #16
+    cmp     #16             ;if model 2 is loaded for remaining 8 frames reset to 0
     beq     reset_mov_counter
     lda     #13
     inc     MOVCOUNTER ; key pressed so change movement counter 
