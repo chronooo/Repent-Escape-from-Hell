@@ -1403,11 +1403,22 @@ map1           ;   Total map size: 425 Bytes
 
     HEX 41 81 a1 e1 00 01 21 95 e1 00 21 95 b2 c6 e1 00 
     HEX 95 e1 00 26 46 66 95 e1 00 35 e1 00 35 d1 e1 00 
-    HEX 33 00 31 e1 00 e1 00 e1 00 e1 00 e1 00 d1 e1 00 
-    HEX 01 21 41 61 81 e1 00 81 c6 e1 00 01 21 41 81 c6 ;   Bytes: 384
+    HEX 33 00 31 e1 00 e1 00 e1 00 e1 00 e1 00 e1 00 d1 
+    HEX e1 00 01 21 41 61 81 e1 00 81 a6 c6 e1 00 01 21 ;   Bytes: 384
 
-    HEX 00 c6 e1 00 e1 00 e1 00 FF
-                                                    ;   Total map size: 392 Bytes
+    HEX 41 81 a6 c6 00 a6 c6 e1 00 e1 00 e1 00 e1 00 e1 
+    HEX 00 86 a6 c6 e1 00 81 e1 00 81 e1 00 73 81 e1 00 
+    HEX 00 00 00 00 00 e1 00 e1 00 d1 e1 00 35 66 86 a6 
+    HEX c6 e1 00 35 75 e1 00 35 75 e1 00 35 75 e1 00 35 ;   Bytes: 448
+
+    HEX 43 83 c3 e1 00 35 e1 00 35 e1 00 35 e1 00 35 e1 
+    HEX 00 35 e1 00 35 e1 00 35 e1 00 35 e1 00 35 e1 00 
+    HEX 11 35 d2 e1 00 35 00 35 00 35 00 03 35 00 35 00 
+    HEX 03 35 00 35 00 35 00 21 41 61 81 a1 c1 e1 00 06 ;   Bytes: 512
+
+    HEX e1 00 01 21 61 e1 00 61 e1 00 61 e1 00 e1 00 e1 
+    HEX 00 e1 00 FF
+                                                        ;   Total map size: 392 Bytes
                                                     ;   Total map size: 391 Bytes
 
 
