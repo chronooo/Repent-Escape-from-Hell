@@ -136,36 +136,6 @@ start
                         ; For our movement animations
     jsr     init
 
-;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #1          ; selecting char 1
-    ldx     #3          ; loop counter
-draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
-    sta     $1beb,X     
-    inx     
-    cpx     #21    ; 
-    bne     draw_ground
-
-   ;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #5          ; selecting char 1
-    ldx     #0          ; loop counter
-add_clouds              ; puts clouds in chars 0 to 21
-    sta     MAP,X     
-    inx     
-    cpx     #21    ; 
-    bne     add_clouds 
-
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X     
-    ldx     #142
-    sta     MAP,X     
-    ldx     #208
-    sta     MAP,X     
-    ldx     #82
-    sta     MAP,X     
-;test: draw ladders
-    jsr     draw_ladder_test
 
 loop
 refresh_life_count
@@ -293,6 +263,11 @@ s_down
     tya
     cmp     #$1
     bne     others
+    lda     STATUS
+    and     #%00000111 ;load the timer value
+    beq     down_skip_dec
+    dec     STATUS
+down_skip_dec
     inc     Y_POS               ; Y_POS += 1 ; no jump here as we just fall through..
     jmp     key_pressed
 others
@@ -333,6 +308,9 @@ neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to
 update_next_frame
 
 falling_event
+    ; lda     STATUS ;if player is ladder, don't fall
+    ; and     #%01100000 ; ladder status
+    ; bne     falling_skip
     jsr     player_pos_to_tmp
     inc     Y_TMP
     jsr     coord_to_index
@@ -340,7 +318,7 @@ falling_event
     cmp     #0      ;check the cell below player
     beq     falling_counting
     lda     STATUS ;if the cell below is not air ,reset falling timer to 0
-    and     #%11111000
+    ora     #%00000001
     sta     STATUS
     jmp     falling_skip
 falling_counting
@@ -352,7 +330,7 @@ falling_counting
     jmp     falling_skip
 falling_falls
     lda     STATUS
-    and     #%11111000 ;reset the timer back to 000
+    and     #%11111001 ;reset the timer back to 000
     sta     STATUS
     inc     Y_POS
     lda     Y_POS
@@ -360,8 +338,9 @@ falling_falls
     ;if so, they player is in a hole, respawn it at top left.
     bne     falling_falls_normal
     jsr     event_life_lose_life
-    lda     #2
+    lda     #1
     sta     X_POS
+    lda     #2
     sta     Y_POS
 falling_falls_normal
 falling_skip
@@ -681,6 +660,10 @@ draw_player_end
     lda     #2
     sta     MAP,X             ; in case the player position changes. If it doesn't,
 
+wait_for_beam
+    lda     $9004       ; load raster beam
+    bne     wait_for_beam
+
 draw    ; label to jump to when we want to skip to rendering step from some reason
 
         ; loop that goes through all the 252 bytes of the map object array (0x1B04-0x1BFF)
@@ -689,8 +672,12 @@ draw    ; label to jump to when we want to skip to rendering step from some reas
 
     ; affter all the updates, the player might have been moved down by falling. Let's update the player coords in the map now.
 
+
     ldx     #0              ; loop counter init (count to 0xFC)
 drawloop
+
+
+    
     lda     MAP,X         ; load value of (0x1B04 + X) into A_reg
                             ; bitmask 0 from bits 765 to get the character array index
     and     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
@@ -701,7 +688,7 @@ drawloop
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #$40             ; run waste time X times
+    ldx     #$50             ; run waste time X times
     jsr     waste_time
 
     jsr     audio_update    ; update the audio after wasting time so it plays for a bit longer
@@ -809,9 +796,12 @@ check_legal_move_right
 check_legal_move_horizontal_chceck
     jsr     coord_to_index
     lda     MAP,X
+    and     #%00011111
     cmp     #0     ;is air?
     beq     check_legal_move_true
     cmp     #6     ;is ladder
+    beq     check_legal_move_true
+    cmp     #4     ;is ladder
     beq     check_legal_move_true
     cmp     #9     ; is heart
     beq     check_legal_move_true
@@ -860,6 +850,7 @@ event_life_increase_life
     tay
     jsr     set_life
 event_life_increase_life_skip
+    lda     #0  ; load 0 top skip otehr comparistons
     rts
 event_life_lose_life
     lda     STATUS
@@ -936,7 +927,7 @@ init            ; call routine in the beginning.
     STA     AU_VOL ; POKE 36878 15 (from book)
 
     ;       setting init values of player x y coords
-    lda     #5
+    lda     #20
     sta     X_POS
     lda     #10
     sta     Y_POS
@@ -964,7 +955,6 @@ init            ; call routine in the beginning.
     stx     C_COL           ; 0 initialized variables:
     stx     MAP_READ_PTR
     stx     AUDIO_TIMER
-    inx
     stx     SCROLLING_FLAG  ; initialize scrolling flag with 1 (not scrolling)
     dex                     ; bring x back to 0 for loop
 
@@ -983,6 +973,19 @@ color_ram
     cpx     #$FC
     bne     color_ram
     sta     $9600,X
+
+    lda     #1          ; selecting char 1, init ground under player
+    sta     $1bff   
+   ;   loop to set the bottom row of the characters to character 00001, written to map array
+    lda     #5          ; selecting char 1
+    ldx     #0          ; loop counter
+add_clouds              ; puts clouds in chars 0 to 21
+    sta     MAP,X     
+    inx     
+    cpx     #21    ; 
+    bne     add_clouds 
+
+
 status_init
     lda     #%00011000      ; iniital life of 3,other flags to be 0
     sta     STATUS
@@ -1032,61 +1035,61 @@ rol_p2
 
 
 
-;******
-;test usage code
-;*****
+; ;******
+; ;test usage code
+; ;*****
 draw_ladder_test
 
-    lda     #10
-    sta     X_TMP
-    lda     #10
-    sta     Y_TMP
-    jsr     coord_to_index
+;     lda     #10
+;     sta     X_TMP
+;     lda     #10
+;     sta     Y_TMP
+;     jsr     coord_to_index
 
-    ldy     #0
-draw_ladder_test_ladder
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    iny
-    cpy     #6
-    bne     draw_ladder_test_ladder
+;     ldy     #0
+; draw_ladder_test_ladder
+;     lda     #6 ;ladder
+;     sta     MAP,X
+;     dec     Y_TMP
+;     jsr     coord_to_index
+;     iny
+;     cpy     #6
+;     bne     draw_ladder_test_ladder
 
-draw_ladder_test_ladder_connector
-    jsr     coord_to_index
-    lda     #7  ;connector
-    sta     MAP,X
+; draw_ladder_test_ladder_connector
+;     jsr     coord_to_index
+;     lda     #7  ;connector
+;     sta     MAP,X
 
-    ldy     #0
-draw_ladder_test_ground
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    iny
-    cpy     #7
-    bne     draw_ladder_test_ground
-    lda     #12
-    sta     X_TMP
-    lda     #10
-    sta     Y_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    rts
+;     ldy     #0
+; draw_ladder_test_ground
+;     dec     X_TMP
+;     jsr     coord_to_index
+;     lda     #1 ;ground
+;     sta     MAP,X
+;     iny
+;     cpy     #7
+;     bne     draw_ladder_test_ground
+;     lda     #12
+;     sta     X_TMP
+;     lda     #10
+;     sta     Y_TMP
+;     jsr     coord_to_index
+;     lda     #1 ;ground
+;     sta     MAP,X
+;     rts
 
 test_code ;[test purpose code,need to be removed at the end
-        ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X
-    ldx     #142
-    sta     MAP,X
-    ldx     #208
-    sta     MAP,X
-    ldx     #82
-    sta     MAP,X
+;         ; init sad guys (for testing)
+;     lda     #3
+;     ldx     #101
+;     sta     MAP,X
+;     ldx     #142
+;     sta     MAP,X
+;     ldx     #208
+;     sta     MAP,X
+;     ldx     #82
+;     sta     MAP,X
     rts
 
 scroll_one_col_with_scroll_flag
@@ -1275,7 +1278,7 @@ event_handle_floor_fill
     clc
     adc     #85
     tax
-    lda     #1
+    lda     #21
     sta     MAP,X
     inx
     sta     MAP,X
@@ -1284,10 +1287,16 @@ event_handle_floor_fill
     inx
     sta     MAP,X
     inx
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx 
+    sta     MAP,X
+    inx 
     sta     MAP,X
     txa
     sec
-    sbc     #89
+    sbc     #92
     tax
     tya
     rts
@@ -1304,40 +1313,39 @@ event_handle_floor_fill
 
 ; MAP 1 ENCODING:
 map1           ;   Total map size: 425 Bytes
-    HEX 00 06 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00
-    HEX 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21
-    HEX d2 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21
-    HEX e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 06 e1 ;   Bytes: 64
+    HEX 01 89 a1 e1 00 01 21 41 61 81 a1 e1 00 26 46 66 
+    HEX 86 e1 00 35 86 a6 c6 e1 00 35 81 e1 00 35 81 e1 
+    HEX 00 35 73 81 e1 00 00 00 00 00 00 00 00 e1 00 e1 
+    HEX 00 21 d1 e1 00 21 66 86 a6 c6 e1 00 21 75 e1 00 ;   Bytes: 64
 
-    HEX 00 06 e1 00 06 e1 00 06 d2 e1 00 06 e1 00 06 e1
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06
-    HEX e1 00 06 e1 00 e1 00 a6 c6 e1 00 91 a1 e1 00 83 ;   Bytes: 128
+    HEX 21 b5 e1 00 21 66 86 b5 e1 00 21 43 95 c3 e1 00 
+    HEX 21 95 e1 00 21 95 e1 00 21 95 e1 00 21 95 e1 00 
+    HEX 21 95 e1 00 21 95 e1 00 21 95 c3 e1 00 21 95 c3 
+    HEX e1 00 21 95 e1 00 11 21 95 d2 e1 00 21 95 00 29 ;   Bytes: 128
 
-    HEX a1 e1 00 66 86 a1 e1 00 61 00 53 61 00 61 e1 00
-    HEX 00 00 00 83 a1 e1 00 83 a1 e1 00 e1 00 e1 00 e1
-    HEX 00 c3 e1 00 b1 c3 e1 00 e1 00 e1 00 e1 00 a6 c6
-    HEX e1 00 a1 e1 00 a1 e1 00 a1 e1 00 26 46 66 86 a1 ;   Bytes: 192
+    HEX 86 a6 c6 e1 00 06 21 d1 e1 00 01 21 e1 00 01 63 
+    HEX e1 00 01 e1 00 13 63 e1 00 01 21 41 61 d1 e1 00 
+    HEX e1 00 e1 00 e1 00 e1 00 e1 00 e1 00 66 e1 00 75 
+    HEX e1 00 75 e1 00 75 e1 00 75 e1 00 26 46 75 e1 00 ;   Bytes: 192
 
-    HEX e1 00 21 e1 00 03 21 e1 00 21 e1 00 03 21 e1 00
-    HEX 03 21 e1 00 26 46 00 41 e1 00 23 41 e1 00 23 41
-    HEX e1 00 46 66 00 61 a1 e1 00 43 61 a1 e1 00 43 61
-    HEX a1 e1 00 61 a1 e1 00 86 a6 c6 e1 00 e1 00 c3 e1 ;   Bytes: 256
+    HEX 35 a6 c6 e1 00 35 a6 00 09 35 a6 c6 e1 00 35 e1 
+    HEX 00 35 e1 00 33 51 d1 e1 00 11 35 e1 00 35 e1 00 
+    HEX 23 e1 00 23 91 e1 00 23 95 e1 00 23 e1 00 23 e1 
+    HEX 00 23 e1 00 23 e1 00 09 23 e1 00 13 23 e1 00 23 ;   Bytes: 256
 
-    HEX 00 c3 e1 00 c3 e1 00 a6 c6 e1 00 a1 e1 00 83 a1
-    HEX e1 00 66 86 a1 e1 00 61 00 61 00 61 e1 00 83 a1
-    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3
-    HEX e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 ;   Bytes: 320
+    HEX e1 00 c3 e1 00 01 21 41 63 81 a1 c3 e1 00 71 d1 
+    HEX e1 00 e1 00 e1 00 e1 00 26 46 66 95 e1 00 21 e1 
+    HEX 00 21 e1 00 21 e1 00 21 41 61 a1 e1 00 35 e1 00 
+    HEX 35 e1 00 11 35 e1 00 d1 e1 00 41 89 a1 e1 00 21 ;   Bytes: 320
 
-    HEX e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 03
-    HEX 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 46
-    HEX 00 41 e1 00 46 66 00 06 e1 00 06 e1 00 06 e1 00
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 ;   Bytes: 384
+    HEX 41 81 a1 e1 00 01 21 95 e1 00 21 95 b2 c6 e1 00 
+    HEX 95 e1 00 26 46 66 95 e1 00 35 e1 00 35 d1 e1 00 
+    HEX 33 00 31 e1 00 e1 00 e1 00 e1 00 e1 00 d1 e1 00 
+    HEX 01 21 41 61 81 e1 00 81 c6 e1 00 01 21 41 81 c6 ;   Bytes: 384
 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
-                                                    ;   Total map size: 430 Bytes
+    HEX 00 c6 e1 00 e1 00 e1 00 FF
+                                                    ;   Total map size: 392 Bytes
+                                                    ;   Total map size: 391 Bytes
 
     ; map array. in case we want to have something there at game start,
     ; put that here (probably will not use, because then we cannot replay the game)
@@ -1375,22 +1383,24 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%00000000
 
     ;       CHAR 01 - ground tile
-    dc.b    #%11111101    
-    dc.b    #%11011010
-    dc.b    #%10010111
-    dc.b    #%11011101 
+    dc.b    #%10111101
+    dc.b    #%11111111
+    dc.b    #%10111011
+    dc.b    #%11001111
+    dc.b    #%11111101
+    dc.b    #%10101011
+    dc.b    #%11101100
+    dc.b    #%11111111
     dc.b    #%10111111
-    dc.b    #%11000011
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
+    dc.b    #%11111011
+    dc.b    #%11010011
+    dc.b    #%01101111
+    dc.b    #%00111011
+    dc.b    #%10111101
+    dc.b    #%10111111
+    dc.b    #%10110110
+
+
 
     ;       CHAR 02 - PLAYER running right 1
     dc.b    #%00111100
@@ -1411,22 +1421,22 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%00100010
 
     ;       CHAR 03 - PLAYER SAD placeholder (lol)
-    dc.b    #%11111111
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
-    dc.b    #%10000101
-    dc.b    #%10000001
-    dc.b    #%10010001
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10011001
+    dc.b    #%00000000
+    dc.b    #%01100110
     dc.b    #%10100101
     dc.b    #%10100101
-    dc.b    #%10000001
-    dc.b    #%10000001
+    dc.b    #%00111100
+    dc.b    #%01000010
     dc.b    #%11111111
-    dc.b    #%11111111
+    dc.b    #%11011011
+    dc.b    #%01000010
+    dc.b    #%00111100
+    dc.b    #%11100111
+    dc.b    #%10100101
+    dc.b    #%10100101
+    dc.b    #%10100101
+    dc.b    #%00100100
+    dc.b    #%00100100
 
     ;       CHAR 04 - projectile placeholder 
     dc.b    #%00000000
@@ -1719,3 +1729,40 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%00111100
     dc.b    #%01111110
     dc.b    #%01100110
+
+    ; char 20 DOOR
+    dc.b    #%11111111
+    dc.b    #%10011001
+    dc.b    #%10011001
+    dc.b    #%11111111
+    dc.b    #%10011001
+    dc.b    #%10011001
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111101
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+
+    ;       CHAR 21 - plank 
+    dc.b    #%11111101    
+    dc.b    #%11011010
+    dc.b    #%10010111
+    dc.b    #%11011101 
+    dc.b    #%10111111
+    dc.b    #%11000011
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    
