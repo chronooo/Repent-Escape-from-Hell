@@ -961,6 +961,7 @@ teleport
     lda     #4
     sta     Y_POS
 
+    rts
 title_screen_init
     lda     #$02
     ldx     #0
