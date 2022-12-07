@@ -1,4 +1,4 @@
-    processor 6502
+ processor 6502
 
 ;   KERNAL [sic] routines
 CHROUT =    $ffd2
@@ -101,48 +101,18 @@ data_label_game_over_top_half
 data_label_title_bottom_half
     ;8;PRESS Z
     HEX	10 12 05 13 13 60 1A 00
+
 ; ----------------- Code for Title ends -----------------------------
 
 start
-    lda     #0 
-    ldx     #0 
+    lda     #0
+    ldx     #0
     ldy     #0
     sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
     sta     MOVCOUNTER
                         ; This is how we keep track of whether to use frame 1 or 2
                         ; For our movement animations
     jsr     init
-
-;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #1          ; selecting char 1
-    ldx     #3          ; loop counter
-draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
-    sta     $1beb,X
-    inx
-    cpx     #21    ;
-    bne     draw_ground
-
-   ;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #5          ; selecting char 1
-    ldx     #0          ; loop counter
-add_clouds              ; puts clouds in chars 0 to 21
-    sta     MAP,X
-    inx
-    cpx     #21    ;
-    bne     add_clouds
-
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X
-    ldx     #142
-    sta     MAP,X
-    ldx     #208
-    sta     MAP,X
-    ldx     #82
-    sta     MAP,X
-;test: draw ladders
-    jsr     draw_ladder_test
 
 loop
 check_alive
