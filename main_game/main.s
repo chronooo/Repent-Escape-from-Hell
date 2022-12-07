@@ -1042,68 +1042,31 @@ draw_ladder_test
     lda     #10
     sta     Y_TMP
     jsr     coord_to_index
+
+    ldy     #0
+draw_ladder_test_ladder
     lda     #6 ;ladder
     sta     MAP,X
     dec     Y_TMP
     jsr     coord_to_index
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
+    iny
+    cpy     #6
+    bne     draw_ladder_test_ladder
+
+draw_ladder_test_ladder_connector
     jsr     coord_to_index
     lda     #7  ;connector
     sta     MAP,X
+
+    ldy     #0
+draw_ladder_test_ground
     dec     X_TMP
     jsr     coord_to_index
     lda     #1 ;ground
     sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
+    iny
+    cpy     #7
+    bne     draw_ladder_test_ground
     lda     #12
     sta     X_TMP
     lda     #10
