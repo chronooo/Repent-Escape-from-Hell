@@ -240,17 +240,7 @@ test_entry       ;[temporary code]
     jmp     update_next_frame
 god_mode_switch
     lda     STATUS
-    and     #%10000000
-    cmp     #%10000000
-    beq     god_mode_off
-god_mode_on
-    lda     STATUS
     ora     #%10000000
-    jmp     god_mode_store
-god_mode_off
-    lda     STATUS
-    and     #%01111111
-god_mode_store
     sta     STATUS
     jmp     update_next_frame
 j_shoot
@@ -605,9 +595,20 @@ proj_check_shoting_enemy
     beq     proj_hit_enemy            ; projectile hit an enemy
     jmp     proj_check_in_air
 proj_check_shoting_player
-    cmp     #%00000010          ; is it a player (char 2)
+    cmp     #2          ; is it a player (char 2)
     beq     proj_hit_player
+    sta     $0         ; strore the current object $0 for future comparison
+    lda     #9         ; first frame start from #10,but loop start by +1
+    clc
+proj_check_shoting_player_other_frames
+    adc     #1
+    cmp     $0
+    beq     proj_hit_player
+    cmp     #16         ;last frame is 16, checked
+    bne     proj_check_shoting_player_other_frames
+    lda     MAP,X       ;restore A
 proj_check_in_air
+
     cmp     #%0                 ; projectile in air? [updated]
     bne     proj_kill           ; kill projectile if it crash somthing else [updated]
 proj_update_to_map
@@ -642,8 +643,7 @@ proj_kill_to_player
     inx
     jmp     proj_gone
 proj_hit_player
-    ldy     #$0
-    jsr     event_life          ;make player lose life by one
+    jsr     event_life_lose_life          ;make player lose life by one
     inx                         ;fall back  in order to remove proj
 proj_gone
     lda     #0
@@ -826,7 +826,7 @@ event_life_lose_life
     lda     STATUS
     and     #%10000000
     cmp     #%10000000
-    bne     event_life_lose_life_skip
+    beq     event_life_lose_life_skip
     jsr     load_life
     cmp     #$1
     beq     event_game_over     ;last life lost result in game over.
