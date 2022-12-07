@@ -26,9 +26,9 @@ x = 0
 with open(filepath) as file:
     for line in file:
         # print(line.rstrip())
-        if line.rstrip()[-1] != '!' and len(line.rstrip()) !=8:
-            print("not 8 chars in non-comment line, quitting..")
-            quit()
+
+
+        increment_count()
         y = 0
         for char in line.rstrip()[::-1]:
 
@@ -53,10 +53,8 @@ with open(filepath) as file:
             elif char == "H":
                 print(f"{9 + (32 * y):02x}", end=' ')  # heart
                 increment_count()
-            elif char == '-':
-                pass
             elif char == "!":
-                break
+                break;
             else:
                 # print("SUS SUS SUS SUS SUS CHARACTER IN MAP SUS !!")
                 quit()
@@ -66,8 +64,6 @@ with open(filepath) as file:
                 quit()
             y = y + 1
         print("00 ", end='')
-        increment_count()
-
 print("FF")
 print("                                                    ;   Total map size: " + str(count) + " Bytes", end="")
 print("")
