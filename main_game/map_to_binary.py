@@ -27,7 +27,7 @@ with open(filepath) as file:
     for line in file:
         # print(line.rstrip())
 
-        print("00 ", end='')
+
         increment_count()
         y = 0
         for char in line.rstrip()[::-1]:
@@ -50,11 +50,16 @@ with open(filepath) as file:
                 print(f"{17 + (32 * y):02x}", end=' ')  # SCROLL
                 increment_count()
             elif char == "F":
-                print(f"{18 + (32 * y):02x}", end=' ')  # FLOOR FILL
+                print(f"{19 + (32 * y):02x}", end=' ')  # FLOOR FILL
                 increment_count()
             elif char == "T":
-                print(f"{19 + (32 * y):02x}", end=' ')  # TELEPORTER
+                print(f"{18 + (32 * y):02x}", end=' ')  # TELEPORTER
                 increment_count()
+            elif char == "H":
+                print(f"{9 + (32 * y):02x}", end=' ')  # heart
+                increment_count()
+            elif char == "!":
+                break;
             else:
                 # print("SUS SUS SUS SUS SUS CHARACTER IN MAP SUS !!")
                 quit()
@@ -63,6 +68,6 @@ with open(filepath) as file:
                 print("BAD MAP BAD MAP TOO COLUMN TOO TALL!!")
                 quit()
             y = y + 1
-
+        print("00 ", end='')
 print("FF")
 print("                                                    ;   Total map size: " + str(count) + " Bytes", end="")
