@@ -367,7 +367,11 @@ falling_skip
 
 ; example, touch a heart to gain extra life.
 event_object_handling
-event_object_inrease_life
+
+    cmp     #20 ; win door
+    bne     event_object_increase_life
+    jmp     event_victory
+event_object_increase_life
     cmp     #9 ;heart
     bne     event_object_step_on_scroll_switch
     jsr     event_life_increase_life
@@ -822,6 +826,8 @@ check_legal_move_horizontal_chceck
     cmp     #19     ; is lever
     beq     check_legal_move_true
     cmp     #18     ; ii portal
+    beq     check_legal_move_true
+    cmp     #20     ; if win Door
     beq     check_legal_move_true
     jmp     check_legal_move_false
 check_legal_move_down
@@ -1374,8 +1380,8 @@ event_handle_floor_fill
 */
 
 
-; MAP 1 ENCODING:
-map1           ;   Total map size: 425 Bytes
+; MAP ENCODING:
+map1   
     HEX 01 89 a1 e1 00 01 21 41 61 81 a1 e1 00 26 46 66 
     HEX 86 e1 00 35 86 a6 c6 e1 00 35 81 e1 00 35 81 e1 
     HEX 00 35 73 81 e1 00 00 00 00 00 00 00 00 e1 00 e1 
@@ -1386,29 +1392,54 @@ map1           ;   Total map size: 425 Bytes
     HEX 21 95 e1 00 21 95 e1 00 21 95 c3 e1 00 21 95 c3 
     HEX e1 00 21 95 e1 00 11 21 95 d2 e1 00 21 95 00 29 ;   Bytes: 128
 
-    HEX 86 a6 c6 e1 00 06 21 d1 e1 00 01 21 e1 00 01 63 
-    HEX e1 00 01 e1 00 13 63 e1 00 01 21 41 61 d1 e1 00 
-    HEX e1 00 e1 00 e1 00 e1 00 e1 00 e1 00 66 e1 00 75 
-    HEX e1 00 75 e1 00 75 e1 00 75 e1 00 26 46 75 e1 00 ;   Bytes: 192
+    HEX 86 a6 c6 e1 00 06 21 d1 e1 00 01 21 e1 00 01 e1 
+    HEX 00 01 e1 00 13 63 e1 00 01 21 41 61 d1 e1 00 e1 
+    HEX 00 e1 00 e1 00 e1 00 e1 00 e1 00 66 e1 00 75 e1 
+    HEX 00 75 e1 00 75 e1 00 75 e1 00 26 46 75 e1 00 35 ;   Bytes: 192
 
-    HEX 35 a6 c6 e1 00 35 a6 00 09 35 a6 c6 e1 00 35 e1 
-    HEX 00 35 e1 00 33 51 d1 e1 00 11 35 e1 00 35 e1 00 
-    HEX 23 e1 00 23 91 e1 00 23 95 e1 00 23 e1 00 23 e1 
-    HEX 00 23 e1 00 23 e1 00 09 23 e1 00 13 23 e1 00 23 ;   Bytes: 256
+    HEX a6 c6 e1 00 35 a6 00 09 35 a6 c6 e1 00 35 e1 00 
+    HEX 35 e1 00 33 51 d1 e1 00 11 35 e1 00 35 e1 00 23 
+    HEX e1 00 23 e1 00 23 e1 00 23 e1 00 23 e1 00 09 23 
+    HEX e1 00 13 23 e1 00 23 e1 00 c3 e1 00 01 21 41 63 ;   Bytes: 256
 
-    HEX e1 00 c3 e1 00 01 21 41 63 81 a1 c3 e1 00 71 d1 
-    HEX e1 00 e1 00 e1 00 e1 00 26 46 66 95 e1 00 21 e1 
-    HEX 00 21 e1 00 21 e1 00 21 41 61 a1 e1 00 35 e1 00 
-    HEX 35 e1 00 11 35 e1 00 d1 e1 00 41 89 a1 e1 00 21 ;   Bytes: 320
+    HEX 81 a1 c3 e1 00 71 d1 e1 00 e1 00 e1 00 e1 00 26 
+    HEX 46 66 95 e1 00 21 a9 e1 00 21 e1 00 21 e1 00 21 
+    HEX 41 61 a1 e1 00 35 e1 00 35 e1 00 11 35 e1 00 d1 
+    HEX e1 00 41 89 a1 e1 00 21 41 81 a1 e1 00 01 21 95 ;   Bytes: 320
 
-    HEX 41 81 a1 e1 00 01 21 95 e1 00 21 95 b2 c6 e1 00 
-    HEX 95 e1 00 26 46 66 95 e1 00 35 e1 00 35 d1 e1 00 
-    HEX 33 00 31 e1 00 e1 00 e1 00 e1 00 e1 00 d1 e1 00 
-    HEX 01 21 41 61 81 e1 00 81 c6 e1 00 01 21 41 81 c6 ;   Bytes: 384
+    HEX e1 00 21 95 b2 c6 e1 00 95 e1 00 26 46 66 95 e1 
+    HEX 00 35 e1 00 35 d1 e1 00 33 00 31 e1 00 e1 00 a3 
+    HEX e1 00 e1 00 e1 00 e1 00 01 63 89 d1 e1 00 01 21 
+    HEX 41 61 81 e1 00 81 c6 e1 00 81 c6 00 01 21 41 81 ;   Bytes: 384
 
-    HEX 00 c6 e1 00 e1 00 e1 00 FF
-                                                    ;   Total map size: 392 Bytes
-                                                    ;   Total map size: 391 Bytes
+    HEX c6 e1 00 21 81 e1 00 21 71 81 e1 00 21 81 e1 00 
+    HEX 21 72 81 e1 00 21 81 e1 00 13 21 81 e1 00 e1 00 
+    HEX e1 00 26 46 66 e1 00 49 e1 00 49 e1 00 51 e1 00 
+    HEX 49 d1 e1 00 51 e1 00 51 e1 00 51 e1 00 51 e1 00 ;   Bytes: 448
+
+    HEX 41 e1 00 33 41 e1 00 e1 00 e1 00 e1 00 b2 c6 e1 
+    HEX 00 e1 00 e1 00 11 21 e1 00 21 e1 00 06 26 46 66 
+    HEX 86 b5 e1 00 15 e1 00 15 d1 e1 00 15 e1 00 15 e1 
+    HEX 00 15 e1 00 13 e1 00 00 00 00 00 e1 00 e1 00 e1 ;   Bytes: 512
+
+    HEX 00 e1 00 d1 e1 00 35 66 86 a6 c6 e1 00 35 75 e1 
+    HEX 00 35 75 e1 00 35 75 e1 00 35 43 83 c3 e1 00 35 
+    HEX e1 00 35 e1 00 35 e1 00 35 e1 00 35 e1 00 35 d2 
+    HEX e1 00 35 e1 00 29 00 03 35 f5 00 11 35 d1 f5 00 ;   Bytes: 576
+
+    HEX 35 86 a6 c6 f5 00 35 95 00 35 95 00 35 95 00 35 
+    HEX 95 00 03 35 63 95 00 35 95 00 35 95 00 21 41 66 
+    HEX 81 a1 c1 e1 00 e1 00 01 21 61 e1 00 49 61 e1 00 
+    HEX 51 61 e1 00 d2 e1 00 e1 00 d1 e1 00 06 26 46 66 ;   Bytes: 640
+
+    HEX 86 a6 c6 e1 00 06 00 06 00 06 b5 00 06 b5 00 06 
+    HEX b5 00 06 b5 00 06 b5 00 06 b5 00 06 b5 00 06 26 
+    HEX 46 66 86 a6 c6 e1 00 e1 00 d2 e1 00 c9 e1 00 e1 
+    HEX 00 d1 e1 00 e1 00 c3 e1 00 a3 e1 00 c3 e1 00 a3 ;   Bytes: 704
+
+    HEX e1 00 c3 e1 00 26 46 66 86 a6 c6 e1 00 14 35 00 
+    HEX FF
+                                                        ;   Total map size: 720 Bytes
 
 
     ; map array. in case we want to have something there at game start,
