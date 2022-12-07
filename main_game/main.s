@@ -318,7 +318,7 @@ falling_falls
     sta     STATUS
     inc     Y_POS
     lda     Y_POS
-    cmp     #11     ; check if it reach the border of the screen
+    cmp     #11    ; check if it reach the border of the screen
     ;if so, they player is in a hole, respawn it at top left.
     bne     falling_falls_normal
     jsr     event_life_lose_life
@@ -963,6 +963,9 @@ teleport
 
     rts
 title_screen_init
+    lda     #0
+    sta     $1c00
+    sta     $1c01
     lda     #$02
     ldx     #0
 color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
