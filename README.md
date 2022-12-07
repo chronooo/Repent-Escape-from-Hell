@@ -13,6 +13,8 @@ The J key is for shooting the weapon. The weapon is used to defeat the monsters,
 
 The R key is to restart the game
 
+The B key is to toggle god mode on, make's it so you don't take damage.
+
 Gameplay: 
 The goal of the game is to reach the end of the stage, which at the end youll find a door leading to salvation. 
 
