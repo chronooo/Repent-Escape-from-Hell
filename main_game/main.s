@@ -662,7 +662,7 @@ drawloop
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #$90             ; run waste time X times
+    ldx     #$40             ; run waste time X times
     jsr     waste_time
 
     jsr     audio_update    ; update the audio after wasting time so it plays for a bit longer
@@ -855,6 +855,11 @@ set_life
 ; initialize the game
 ;***********************************
 init            ; call routine in the beginning.
+
+    ; change the lda instructions for the map to start of map, in case we modified it before
+    lda     #$16
+    sta     read_col_loop+2     
+    sta     read_col_loop+17   
 
     ; setting audio speakers volume
     lda     #15
@@ -1072,26 +1077,34 @@ col_blank_fill
     bne     col_blank_fill
     ldx     MAP_READ_PTR ; load current column array index into X_reg 
 read_col_loop
-    lda     map1,X     ; read from map storage at index s
-    beq     read_col_done
+    lda     map1,X     ; read from map storage at index X_reg
+    beq     read_col_done         ; end of column flag
     cmp     #$FF
-    beq     read_col_done
+    beq     read_col_done         ; end of map flag
     ; else, check what we just loaded and put it in correct location.
     lsr
     lsr     ; DIVIDE BY 32 ! HAHA!  (only takes 5 bytes)
     lsr     ; since y value is stored in bits 765, we need to put it 
     lsr     ; in bits 210 so that we can use it as an INDEX!!
     lsr
-    tay     ;; store that in Y
+    tay     ; store that in Y
     lda     map1,X     ; read same thing into A again
     and     #%00011111  ; bit mask out the 765 bits (we don't need them anymore)
     sta     TMP_COL,Y   ; store the char value at Y that we just Read
     inx     
+    beq     increment_map_origin ; if inx set zero flag, means we wrapped around – need to go to next "page" of the map..
     jmp     read_col_loop
 read_col_done
     inx     ; inx so that we have increased x for next read
     stx     MAP_READ_PTR
     rts ; return from routine
+
+increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1, 
+                            ; skipping the address referenced by the code forward by 256 bytes.
+                            ; oh god self modifying code
+    inc     read_col_loop+2     
+    inc     read_col_loop+17   
+    jmp     read_col_loop
 
 
 write_col_to_x_on_screen        ; Routine to write the column read from map encoding,
@@ -1151,6 +1164,8 @@ x_notneg
     jsr     read_column         ; read a column and place it into TMP_COL[8] array
     jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
+
+
 
 ; audio routines
 ; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
@@ -1216,15 +1231,39 @@ audio_update_done
 
 ; MAP 1 ENCODING:
 map1          
-    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
-    HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
-    HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
-    HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
-    HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
-    HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
-    HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 a1 e1 00 43 
-    HEX 61 a1 e1 00 43 61 a1 e1 00 61 a1 e1 00 86 a6 c6 
-    HEX e1 00 e1 00 c3 e1 00 c3 e1 00 c3 e1 FF
+    HEX 00 d1 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 
+    HEX 86 a1 e1 00 53 61 00 51 61 00 52 61 e1 00 83 a1 
+    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 b1 
+    HEX c3 e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 ;   Bytes: 64
+
+    HEX a1 e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 
+    HEX 03 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 
+    HEX 46 00 41 e1 00 23 41 e1 00 23 41 e1 00 46 66 00 
+    HEX 61 a1 e1 00 43 61 a1 e1 00 43 61 a1 e1 00 61 a1 ;   Bytes: 128
+
+    HEX e1 00 86 a6 c6 e1 00 e1 00 c3 e1 00 c3 e1 00 c3 
+    HEX e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 a1 
+    HEX e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 e1 
+    HEX 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 e1 ;   Bytes: 192
+
+    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 00 
+    HEX 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 e1 
+    HEX 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 46 
+    HEX 66 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 ;   Bytes: 256
+
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 ;   Bytes: 320
+
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 ;   Bytes: 384
+
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
+                                                        ;   Total map size: 412 Bytes
 ;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
 ;     HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
 ;     HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
@@ -1562,3 +1601,57 @@ map1
     dc.b    #%00101100
     dc.b    #%00101000
     dc.b    #%01000100    
+
+    ;       Char 17 scroll button
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00111100
+    dc.b    #%00100100
+    dc.b    #%01111110
+    dc.b    #%01111110
+    dc.b    #%01111110
+
+    ; char 18 portal
+    dc.b    #%00000000
+    dc.b    #%00010000
+    dc.b    #%00110000
+    dc.b    #%11111100
+    dc.b    #%01100100
+    dc.b    #%00100110
+    dc.b    #%00000010
+    dc.b    #%01101010
+    dc.b    #%11011010
+    dc.b    #%10001010
+    dc.b    #%01001010
+    dc.b    #%00000010
+    dc.b    #%01100010
+    dc.b    #%00111100
+    dc.b    #%00011000
+    dc.b    #%00000000
+
+    ; char 19 - lever (floor fill)
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%11110000
+    dc.b    #%11101000
+    dc.b    #%10100000
+    dc.b    #%10110000
+    dc.b    #%00110000
+    dc.b    #%00111000
+    dc.b    #%00011000
+    dc.b    #%00011000
+    dc.b    #%00111100
+    dc.b    #%01111110
+    dc.b    #%01100110
