@@ -138,7 +138,7 @@ start
 
 ;   loop to set the bottom row of the characters to character 00001, written to map array
     lda     #1          ; selecting char 1
-    ldx     #0          ; loop counter
+    ldx     #3          ; loop counter
 draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
     sta     $1beb,X     
     inx     
@@ -351,10 +351,19 @@ falling_counting
     inc     STATUS  ;if not, increase timer by 1
     jmp     falling_skip
 falling_falls
-    inc     Y_POS
     lda     STATUS
     and     #%11111000 ;reset the timer back to 000
     sta     STATUS
+    inc     Y_POS
+    lda     Y_POS
+    cmp     #11     ; check if it reach the border of the screen
+    ;if so, they player is in a hole, respawn it at top left.
+    bne     falling_falls_normal
+    jsr     event_life_lose_life
+    lda     #2  
+    sta     X_POS
+    sta     Y_POS
+falling_falls_normal
 falling_skip
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
@@ -1183,6 +1192,8 @@ x_notneg
     jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
 
+
+;******************************************************************************
 ; audio routines
 ; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
 audio_noise ; activate the audio playback for noise oscilator
