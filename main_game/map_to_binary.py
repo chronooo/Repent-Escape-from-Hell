@@ -27,27 +27,23 @@ with open(filepath) as file:
     for line in file:
         # print(line.rstrip())
 
-
-        increment_count()
+        if len(line.rstrip()) != 0 and line.rstrip()[-1] != '!' and len(line.rstrip()) !=8:
+            print("not 8 chars in non-comment line, quitting..")
+            quit()
         y = 0
         for char in line.rstrip()[::-1]:
 
             if char == 'P':
                 print(f"{1 + (32 * y):02x}", end=' ')
                 increment_count()
-            elif char == '-':
-                pass
-                # skip over this thing
-                # print(2, end='')
             elif char == 'L':
                 print(f"{6 + (32 * y):02x}", end=' ')  # ladder char is 6
                 increment_count()
-
             elif char == 'E':
-                print(f"{3 + (32 * y):02x}", end=' ')  # ladder char is 3
+                print(f"{3 + (32 * y):02x}", end=' ')  # enemy
                 increment_count()
             elif char == "S":
-                print(f"{17 + (32 * y):02x}", end=' ')  # SCROLL
+                print(f"{17 + (32 * y):02x}", end=' ')  # SCROLL button
                 increment_count()
             elif char == "F":
                 print(f"{19 + (32 * y):02x}", end=' ')  # FLOOR FILL
@@ -58,16 +54,26 @@ with open(filepath) as file:
             elif char == "H":
                 print(f"{9 + (32 * y):02x}", end=' ')  # heart
                 increment_count()
+            elif char == "D":
+                print(f"{20 + (32 * y):02x}", end=' ')  # door
+                increment_count()
+            elif char == "B":
+                print(f"{21 + (32 * y):02x}", end=' ')  # bridge
+                increment_count()
+            elif char == '-':
+                pass
             elif char == "!":
-                break;
+                break
             else:
                 # print("SUS SUS SUS SUS SUS CHARACTER IN MAP SUS !!")
                 quit()
 
-            if y < 0:
+            if y > 7:
                 print("BAD MAP BAD MAP TOO COLUMN TOO TALL!!")
                 quit()
             y = y + 1
         print("00 ", end='')
+        increment_count()
+
 print("FF")
 print("                                                    ;   Total map size: " + str(count) + " Bytes", end="")
