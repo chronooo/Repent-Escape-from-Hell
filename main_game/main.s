@@ -5,15 +5,31 @@ CHROUT =    $ffd2
 CHRIN  =    $ffcf
 CURKEY =    $00c5
 ;   ZERO PAGE MACROS
+MOVCOUNTER = $19  ; Which climbing animation to use
+ANIMCOUNTER = $20   ; Current animation loop used for idle animation
 X_POS  =    $21     ; ZP 0x21: player X location (0 <= X_POS <= 20) x = 0 is leftmost tile.
 Y_POS  =    $22     ; ZP 0x22: player Y location (0 <= Y_POS <= 11) y = 0 is topmost tile.
 X_TMP  =    $23     ; ZP 0x23: temp variable for X coordinate value. only used in index -> coordinate routine right now.
 Y_TMP  =    $24     ; ZP 0x24: temp variable for Y coordinate value. only used in index -> coordinate routine right now.
 STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit prev ladder symbol][2bit life][3bit counter for falling down]
 
-C_COL           =    $30     ; current column variable (which column are we on?)
-MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+C_COL           =   $30     ; current column variable (which column are we on?)
+MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
+SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
+AUDIO_TIMER     =   $33     ; audio flag to keep track of the audio playback.
+WIN_FLAG        =   $34         ; win or lose
+
+
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
+
+;   Audio SPEAKERS
+AU_VOL =    36878   ; 0 to 15
+AU_LOW =    36874   ; 128 to 255
+AU_MID =    36875   ; 128 to 255
+AU_HI  =    36876   ; 128 to 255
+AU_NO  =    36877   ; 128 to 255
+
+
 
 MAP     =    $1b04   ; map array pointer.
 TMP_COL =    $1afc   ; where column is loaded when map array is read
@@ -29,6 +45,8 @@ stubend
 ; This allows us to have a writable region of less than a byte, which gets rid of a lot of unnecessary 
 ; duplicate code we had to account for the screen memory space spanning more than a byte.
 ; this scheme, however, needs a white screen fill before the decompression takes place, but in the end it ends up being more efficient. 
+    ldx     #0
+    stx     WIN_FLAG
 title 
     jsr     title_screen_init
 
@@ -109,44 +127,26 @@ data_label
     HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 03 01 
     HEX 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA 10 12 
     HEX 05 13 13 60 1A 00 
+
+data_label_win
+; VICTORY!
+    HEX 16 09 03 14 0F 12 19 21 20 1F 20 CB 10 12 
+    HEX 05 13 13 60 1A 00 
+
 ; ----------------- Code for Title ends -----------------------------
 
 start
     lda     #0 
     ldx     #0 
     ldy     #0
+    sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
+    sta     MOVCOUNTER
+                        ; This is how we keep track of whether to use frame 1 or 2
+                        ; For our movement animations
     jsr     init
 
-;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #1          ; selecting char 1
-    ldx     #0          ; loop counter
-draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
-    sta     $1beb,X     
-    inx     
-    cpx     #21    ; 
-    bne     draw_ground
 
-   ;   loop to set the bottom row of the characters to character 00001, written to map array
-    lda     #5          ; selecting char 1
-    ldx     #0          ; loop counter
-add_clouds              ; puts clouds in chars 0 to 21
-    sta     MAP,X     
-    inx     
-    cpx     #21    ; 
-    bne     add_clouds 
 
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X     
-    ldx     #142
-    sta     MAP,X     
-    ldx     #208
-    sta     MAP,X     
-    ldx     #82
-    sta     MAP,X     
-;test: draw ladders
-    jsr     draw_ladder_test
 
 loop
 refresh_life_count
@@ -180,13 +180,26 @@ refresh_player_position_draw_prev_cell
 refresh_player_position_clear; clear the status correspoinding bits
     lda     STATUS
     and     #%10011111
-    sta     STATUS                            
+    sta     STATUS
+
+    ; check if SCROLLING_FLAG =! 0
+    ; when SCROLLING_FLAG == 0, we want to disable player input, and scroll until the player is on leftmost column of the screen
+    lda     SCROLLING_FLAG
+    bne     get_input       ; if not scrolling, go to input as usual
+    ; if we fell through, need to scroll, and then go straight to draw call afterwards
+    jmp     scroll_one_col_with_scroll_flag
+
+get_input
 ;-----
 ; GET PLAYER INPUT!
 ;-----
     lda     CURKEY       ; loads the current pressed key from memory
     cmp     #10         ; if R is pressed, restart whole program
     beq     start
+    cmp     #50         ; T for Test purpose [test code]
+    beq     test_entry
+    cmp     #35         ; B for entering god modes swtich
+    beq     god_mode_switch
     cmp     #17         ; if A is pressed
     beq     a_left
     cmp     #18         ; if D is pressed
@@ -197,27 +210,22 @@ refresh_player_position_clear; clear the status correspoinding bits
     beq     s_down
     cmp     #20         ; if J is pressed
     beq     j_shoot
-    cmp     #50         ;T for Test purpose
-    beq     test_code
-    cmp     #13
+    cmp     #13         ; P for scroll
     beq     p_scroll
     jmp     update_next_frame
 
 exit_prg
     rts
-test_code       ;[temporary code]
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X     
-    ldx     #142
-    sta     MAP,X     
-    ldx     #208
-    sta     MAP,X     
-    ldx     #82
-    sta     MAP,X     
+test_entry       ;[temporary code]
+    jsr     test_code
+    jmp     update_next_frame
+god_mode_switch
+    lda     STATUS
+    ora     #%10000000
+    sta     STATUS
     jmp     update_next_frame
 j_shoot
+    jsr     audio_shoot
     lda     X_POS               ; load X_POS into A_reg
     cmp     #20                 ; cannot spawn projectil if we are on the rightmost block
     beq     label_j   ; skip if x == 20
@@ -232,8 +240,7 @@ j_shoot
 label_j
     jmp     update_next_frame   ; leave
 p_scroll
-    jsr     scroll_one_column
-    jmp     update_next_frame
+    jmp     event_victory
 a_left
     ldy     #$0                 ;check move left flag
     jsr     check_legal_move
@@ -266,14 +273,20 @@ s_down
     tya
     cmp     #$1
     bne     others
+    lda     STATUS
+    and     #%00000111 ;load the timer value
+    beq     down_skip_dec
+    dec     STATUS
+down_skip_dec
     inc     Y_POS               ; Y_POS += 1 ; no jump here as we just fall through..
     jmp     key_pressed
 others
     jmp     update_next_frame   ;other cannot move cases
 
 key_pressed
+
     ;   need to fixup the x and y values in case we went out of bounds:
-    ;   we do NOT need to check both x and y for out of bounds, 
+    ;   we do NOT need to check both x and y for out of bounds,
     ;   since we know only one case can be satisfied at a time. (we only check one keypress per loop)
 
     ;   fixing x:   bound is (0 <= X_POS <= 20)
@@ -287,29 +300,98 @@ key_pressed
     bmi     neg_y           ; branch if Y_POS is negative, i.e Y_POS = FF because we just did Y_POS = 0 - 1
     cmp     #12             ; cmp Y_POS to 12 ; if it is equal, then we need to do Y_POS--
     beq     pos_y
-    jmp     update_next_frame   ; if our code reached here, means everything is in bounds, continue execution.    
+    jmp     update_next_frame   ; if our code reached here, means everything is in bounds, continue execution.
 pos_y
     dec     Y_POS
-    jmp     update_next_frame 
+    jmp     update_next_frame
 neg_y       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     Y_POS
-    jmp     update_next_frame   
+    jmp     update_next_frame
 pos_x
     dec     X_POS
-    jmp     update_next_frame 
+    jmp     update_next_frame
 neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     X_POS           ; no jmp here, just fall through.
 
-
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
+
 update_next_frame
 
+falling_event
+    ; lda     STATUS ;if player is ladder, don't fall
+    ; and     #%01100000 ; ladder status
+    ; bne     falling_skip
+    jsr     player_pos_to_tmp
+    inc     Y_TMP
+    jsr     coord_to_index
+    lda     MAP,X
+    cmp     #0      ;check the cell below player
+    beq     falling_counting
+    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
+    ora     #%00000001
+    sta     STATUS
+    jmp     falling_skip
+falling_counting
+    lda     STATUS
+    and     #%00000111 ;load the timer value
+    cmp     #%1   ;chceck if it reached the timer
+    beq     falling_falls ;fall player if timer reach
+    inc     STATUS  ;if not, increase timer by 1
+    jmp     falling_skip
+    
+falling_falls
+    lda     STATUS
+    and     #%11111001 ;reset the timer back to 000
+    sta     STATUS
+    inc     Y_POS
+    lda     Y_POS
+    cmp     #11     ; check if it reach the border of the screen
+    ;if so, they player is in a hole, respawn it at top left.
+    bne     falling_falls_normal
+    jsr     event_life_lose_life
+    lda     #1
+    sta     X_POS
+    lda     #2
+    sta     Y_POS
+falling_falls_normal
+falling_skip
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
     lda     MAP,X               ;load the exist map element
-    ;check existed element on map of the target cell
+
+; handle events with objects existed at the target cell first;
+; usage: do not modify X or the target cell after moveiment;
+; cmp,then bne to the next available object,and finish at event_object_handling_done
+
+; example, touch a heart to gain extra life.
+event_object_handling
+
+    cmp     #20 ; win door
+    bne     event_object_increase_life
+    jmp     event_victory
+event_object_increase_life
+    cmp     #9 ;heart
+    bne     event_object_step_on_scroll_switch
+    jsr     event_life_increase_life
+event_object_step_on_scroll_switch
+    cmp     #17
+    bne     event_object_step_on_lever_floor_fill
+    dec     SCROLLING_FLAG      ;; start scrolling
+event_object_step_on_lever_floor_fill
+    cmp     #19
+    bne     event_object_step_on_portal_teleport
+    jsr     event_handle_floor_fill      ;; start scrolling
+event_object_step_on_portal_teleport
+    cmp     #18
+    bne     event_object_handling_done
+    jsr     teleport      ;; start scrolling
+    jmp     draw_player_end
+
+;next object event
+event_object_handling_done
+    ;check existed element on map bttof the target cell
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
     bne     update_next_frame_check_exist_ladder_connector
@@ -326,14 +408,129 @@ update_next_frame_check_exist_ladder_connector
     ora     #%01000000      ;*10*****; store ladder connector to status
     sta     STATUS
 update_next_frame_draw_man_over_ladder
-    lda     #8
+
+    lda     MOVCOUNTER      ;Check the movement counter to see what model to use
+    cmp     #8              ;if we spent less than 8 frames in model 1 load it
+    bcc     climb_frame_1
+    jmp     climb_frame_counter_check ; load model 2 instead for 8 frames
+
+climb_frame_1
+    lda     #12         ; climbing model 1
+    inc     MOVCOUNTER ; key pressed so change movement counter
     jmp     update_next_frame_player
+
+climb_frame_counter_check
+    lda     MOVCOUNTER
+    cmp     #16             ;if model 2 is loaded for remaining 8 frames reset to 0
+    beq     reset_mov_counter
+    lda     #13
+    inc     MOVCOUNTER ; key pressed so change movement counter
+    jmp     update_next_frame_player
+
+reset_mov_counter
+    lda     #0
+    sta     MOVCOUNTER
+    lda     #13
+    jmp     update_next_frame_player
+
 update_next_frame_exist_air
+    lda     CURKEY          ;Checking if the player is idle
+    cmp     #64
+    beq     update_next_frame_player_idle
+    cmp     #18      ;Check if player is moving right (D)
+    beq     update_next_frame_player_right
+    cmp     #17     ;check if player is moving left (A)
+    beq     update_next_frame_player_left
     lda     #2       ; player char ptr into A_reg[player chars?basd on ladder]
+    jmp     update_next_frame_player
+
+update_next_frame_player_right
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
+    cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
+    bcc     right_frame_1 ; if we havent render right frame 1
+    jmp     right_frame_2 ; if we have start rendering right frame 2
+
+right_frame_1
+    inc     ANIMCOUNTER
+    lda     #2         ; pos of right frame  1 for player
+    jmp     update_next_frame_player
+
+resetRunCounter
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     right_frame_3 ; After resetting render right frame 2 one more time
+
+right_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER
+    cmp     #16         ;If weve spent 8 frames in right frame 2 reset counter
+                        ; and go back to right frame 1
+    beq     resetRunCounter
+
+right_frame_3
+    lda     #14
+    jmp     update_next_frame_player
+
+update_next_frame_player_left
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
+    cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
+    bcc     left_frame_1 ; if we havent render left frame 1
+    jmp     left_frame_2 ; if we have start rendering left frame 2
+
+left_frame_1
+    inc     ANIMCOUNTER
+    lda     #15         ; pos of left frame  1 for player
+    jmp     update_next_frame_player
+
+resetRunCounter2
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     left_frame_3 ; After resetting render left frame 2 one more time
+
+left_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER
+    cmp     #16         ;If weve spent 8 frames in left frame 2 reset counter
+                        ; and go back to left frame 1
+    beq     resetRunCounter2
+
+left_frame_3
+    lda     #16     ; left frame 2
+    jmp     update_next_frame_player
+
+update_next_frame_player_idle
+
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
+    cmp     #8          ;Check if weve been in the idle animation 1 for 8 frames
+    bcc     idle_frame_1 ; if we havent render idle frame 1
+    jmp     idle_frame_2 ; if we have start rendering idle frame 2
+
+idle_frame_1
+    inc     ANIMCOUNTER
+    lda     #10         ; pos of idle frame  1 for player
+    jmp     update_next_frame_player
+resetAnimCounter
+    lda     #0
+    sta     ANIMCOUNTER
+    jmp     idle_frame_3 ; After resetting render idle frame 2 one more time
+
+idle_frame_2
+    inc     ANIMCOUNTER
+    lda     ANIMCOUNTER
+    cmp     #16         ;If weve spent 8 frames in idle frame 2 reset counter
+                        ; and go back to idle frame 1
+    beq     resetAnimCounter
+
+idle_frame_3
+    lda     #11
+    jmp     update_next_frame_player
+
 update_next_frame_player
+
     sta     MAP,X             ; store it at the player's position
 
-    ;   showing number of lifs available at the top
+life_status_update
+    ;   showing number of lifes available at the top
     ;   loop to set the bottom row of the characters to character 00001, written to map array
     clc
     jsr     load_life
@@ -351,36 +548,7 @@ add_life_symbol              ; puts add life symbols in line2
     cpx     $0;
     bne     add_life_symbol
 
-falling_event
-    lda     X_POS
-    sta     X_TMP
-    lda     Y_POS
-    sta     Y_TMP
-    inc     Y_TMP
-    jsr     coord_to_index 
-    lda     MAP,X
-    cmp     #0      ;check the cell below player
-    beq     falling_counting
-    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
-    and     #%11111000
-    sta     STATUS
-    jmp     proj_event
-falling_counting 
-    lda     STATUS
-    and     #%00000111 ;load the timer value
-    cmp     #%1   ;chceck if it reached the timer
-    beq     falling_falls ;fall player if timer reach
-    inc     STATUS  ;if not, increase timer by 1 
-    jmp     proj_event
-falling_falls
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #0             ;load air
-    sta     MAP,X          ;store the air to the position before
-    inc     Y_POS
-    lda     STATUS
-    and     #%11111000 ;reset the timer back to 000
-    sta     STATUS
+
 
 proj_event
     ;   important: do not destroy value of X during the tile updates. we are using it to iterate thru the array.
@@ -397,12 +565,12 @@ update_map_loop
     cmp     #%00000011          ;if this an enemy charging  UNCOMMENT THESE 2 LINES TO MAKE ENEMY CHARGE AGAIN!
     beq     proj_update
 post_proj_update
-    inx                         
+    inx
     cpx     #$FC            ; is X == 0xFC?
     bne     update_map_loop ; if not, update next character. If X == 0xFC, fall through.
     jmp     draw            ; go to draw section
 
-proj_update                  
+proj_update
     tya                         ; restore A_reg
     and     #%11100000          ; get the the most significant 3 bits in A_reg (proj timer)
     cmp     #%11100000          ; is the proj timer == 111?
@@ -419,10 +587,10 @@ proj_move                       ; MOVE the projectile if its time has come (bits
     txa                         ; transfer index (offset) to A in order to retrieve coordinates via routine
     jsr     index_to_coord      ; call routine, get (x, y) of index in X_TMP, Y_TMP
     lda     X_TMP               ; load X value of projectile coordinate for comparison
-    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile. 
+    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile.
     beq     proj_gone
     cmp     #0
-    beq     proj_gone           ; if x == 0, we are on edge of map. delete the projectile. 
+    beq     proj_gone           ; if x == 0, we are on edge of map. delete the projectile.
 
     ; is the projectile going to hit something? check what is in front of projectile.
     ;else, x+=1, and store that.
@@ -433,7 +601,7 @@ proj_move                       ; MOVE the projectile if its time has come (bits
     beq     proj_left_move
 proj_left_move
     dex     ; get index of tile left in front of projectile
-    jmp     proj_check 
+    jmp     proj_check
 proj_right_move
     inx                         ; get index of tile right in front of projectile
 proj_check
@@ -446,9 +614,20 @@ proj_check_shoting_enemy
     beq     proj_hit_enemy            ; projectile hit an enemy
     jmp     proj_check_in_air
 proj_check_shoting_player
-    cmp     #%00000010          ; is it a player (char 2)
+    cmp     #2          ; is it a player (char 2)
     beq     proj_hit_player
+    sta     $0         ; strore the current object $0 for future comparison
+    lda     #9         ; first frame start from #10,but loop start by +1
+    clc
+proj_check_shoting_player_other_frames
+    adc     #1
+    cmp     $0
+    beq     proj_hit_player
+    cmp     #16         ;last frame is 16, checked
+    bne     proj_check_shoting_player_other_frames
+    lda     MAP,X       ;restore A
 proj_check_in_air
+
     cmp     #%0                 ; projectile in air? [updated]
     bne     proj_kill           ; kill projectile if it crash somthing else [updated]
 proj_update_to_map
@@ -465,12 +644,12 @@ proj_update_to_map_shoting_player
     sta      MAP,X              ; store projectile into the tile to the left of it
     inx                         ; set X back
 proj_upate_to_map_cleared_existed_projecticle
-    lda     #0               
+    lda     #0
     sta     MAP,X               ; write 0 to where projectile just was
     jmp     post_proj_update    ; go back to loop .
 
 proj_hit_enemy
-    lda     #0                  
+    lda     #0
     sta     MAP,X               ; write 0 to enemy location (kill it)
 proj_kill
     cpy     #$03
@@ -483,44 +662,52 @@ proj_kill_to_player
     inx
     jmp     proj_gone
 proj_hit_player
-    ldy     #$0
-    jsr     event_life          ;make player lose life by one
+    jsr     event_life_lose_life          ;make player lose life by one
     inx                         ;fall back  in order to remove proj
 proj_gone
-    lda     #0      
+    lda     #0
     sta     MAP,X               ; store 0 – whitespace, into where the projectile location.
     jmp     post_proj_update    ; go back to loop .
 
 
-
+draw_player_end
     jsr     player_pos_to_tmp   ; store player position into the temporary positions
     jsr     coord_to_index      ; get index into map array inside X_reg
     lda     #2
     sta     MAP,X             ; in case the player position changes. If it doesn't,
 
+wait_for_beam
+    lda     $9004       ; load raster beam
+    bne     wait_for_beam
+
 draw    ; label to jump to when we want to skip to rendering step from some reason
 
-        ; loop that goes through all the 252 bytes of the map object array (0x1B04-0x1BFF) 
+        ; loop that goes through all the 252 bytes of the map object array (0x1B04-0x1BFF)
         ; and writes the corresponsing character to screen memory.
         ; does not really matter that we are drawing stuff every frame, vic is too fast anyway (i think)
 
     ; affter all the updates, the player might have been moved down by falling. Let's update the player coords in the map now.
 
+
     ldx     #0              ; loop counter init (count to 0xFC)
 drawloop
+
+
+    
     lda     MAP,X         ; load value of (0x1B04 + X) into A_reg
                             ; bitmask 0 from bits 765 to get the character array index
     and     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
 ;   now that we have the character index in A_Reg, store that at corresponsing screen memory location
     sta     $1e00,X         ; use same offset (X) for screen memory storage.
-    inx                         
+    inx
     cpx     #$FC            ; is X == 0xFC?
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
 
-    ldx     #$30             ; run waste time X times
+    ldx     #$50             ; run waste time X times
     jsr     waste_time
 
+    jsr     audio_update    ; update the audio after wasting time so it plays for a bit longer
     jmp     loop            ; go back to very top of while loop
 
 ;*************************************
@@ -531,13 +718,13 @@ coord_to_index              ; routine to compute offset from MAP from x, y value
                             ; Input: X value in X_TMP, Y value in Y_TMP ZP locations.
                             ; Output: index in X register
                             ; Modifies: A_reg, X_reg
-                            ; formula is index(x,y) = 21y + x 
-                            
+                            ; formula is index(x,y) = 21y + x
+
     ldx     Y_TMP           ; load Y_POS into X, use as loop counter when adding
     lda     #0
 y_mult_loop                 ; loop to compute A_reg = 21 * X
     cpx     #0              ; if x is 0, quit multiplication loop
-    beq     add_x           
+    beq     add_x
     clc                     ; clear carry before add
     adc     #21             ; add 21
     dex                     ; decrement X
@@ -545,17 +732,17 @@ y_mult_loop                 ; loop to compute A_reg = 21 * X
 add_x
     clc                     ; clc before add
     adc     X_TMP           ; A_reg += Y_POS
-    tax                     ; return in X for convenience 
+    tax                     ; return in X for convenience
                             ; (all the times we want to use it, we use it as an offset (ex: sta 00,X)
     rts                     ; return from routine
 
 
-index_to_coord              ; routine to compute (x, y) coordinates and store them in X_TMP, Y_TMP 
+index_to_coord              ; routine to compute (x, y) coordinates and store them in X_TMP, Y_TMP
                             ; Input: map array index in A_reg
                             ; Output: X value in X_TMP, Y value in Y_TMP ZP locations.
                             ; Modifies: A_reg, Y_reg
     ldy     #0              ; use Y_reg to count the Y coordinate
-y_div_loop    
+y_div_loop
     cmp     #21             ; is A_reg less than 21?
     bcc     remainder       ; if it is, done with loop
     iny                     ; add 1 to the y coordinate counter
@@ -579,11 +766,11 @@ player_pos_to_tmp
 waste_time
 waste_time_loop_outer
     ldy     #0
-waste_time_loop_inner             
+waste_time_loop_inner
     iny
     cpy     $FF             ; waste time by counting up to 255 in Y reg
     bne     waste_time_loop_inner
-    dex     
+    dex
     cpx     #0
     bne     waste_time_loop_outer
     rts
@@ -597,7 +784,7 @@ waste_time_loop_inner
 ;read:  Y = 0 check if allow move left
 ;       Y = 1 check if allow move right
 ;       Y = 2 check if allow move up
-;       Y = 3 check iff allow move down                     
+;       Y = 3 check iff allow move down
 ;output: set Y to 1 if leagl move, or Y to 0 illegal move, or set Y to FF to be a error flag.
 ;-------
 check_legal_move
@@ -619,15 +806,28 @@ check_legal_move_horizontal
     rts     ;others, destory Y.
 check_legal_move_left
     dec     X_TMP
-    jmp     check_legal_move_horizontal_chceck 
+    jmp     check_legal_move_horizontal_chceck
 check_legal_move_right
     inc     X_TMP
 check_legal_move_horizontal_chceck
     jsr     coord_to_index
     lda     MAP,X
+    and     #%00011111
     cmp     #0     ;is air?
     beq     check_legal_move_true
     cmp     #6     ;is ladder
+    beq     check_legal_move_true
+    cmp     #4     ;is ladder
+    beq     check_legal_move_true
+    cmp     #9     ; is heart
+    beq     check_legal_move_true
+    cmp     #17     ; is switch for scroll
+    beq     check_legal_move_true
+    cmp     #19     ; is lever
+    beq     check_legal_move_true
+    cmp     #18     ; ii portal
+    beq     check_legal_move_true
+    cmp     #20     ; if win Door
     beq     check_legal_move_true
     jmp     check_legal_move_false
 check_legal_move_down
@@ -641,6 +841,15 @@ check_legal_move_vertical_check
     beq     check_legal_move_true
     cmp     #7      ;is a ladder connector? []
     beq     check_legal_move_true
+    cmp     #9     ; is heart
+    beq     check_legal_move_true
+    cmp     #17     ; is switch for scroll
+    beq     check_legal_move_true
+    cmp     #19     ; is lever
+    beq     check_legal_move_true
+    cmp     #18     ; ii portal
+    beq     check_legal_move_true
+
 check_legal_move_false
     ldy     #$0
     rts
@@ -651,33 +860,84 @@ check_legal_move_true
 ;life events:add or lose life(trigger dead)
 ;if y ==0? lose life by one. If others, incrase life by 1.
 ;---------
-event_life
-    tya
-    cmp     #$0 ;if a ==0? lose life by one. If others, incrase life by 1.
-    beq     event_life_lose_life
 event_life_increase_life
     jsr     load_life
     adc     #1                  ;add life by 1 (carry cleared in the previous step)
     cmp     #%00000100          ;check if life overflowed
-    beq     event_life_end      ;maximum life reached, nothing to do
+    beq     event_life_increase_life_skip      ;maximum life reached, nothing to do
     tay
     jsr     set_life
+event_life_increase_life_skip
+    lda     #0  ; load 0 top skip otehr comparistons
     rts
 event_life_lose_life
+    lda     STATUS
+    and     #%10000000
+    cmp     #%10000000
+    beq     event_life_lose_life_skip
     jsr     load_life
     cmp     #$1
     beq     event_game_over     ;last life lost result in game over.
     tay
     dey
     jsr     set_life
-    rts
-event_life_end
+    
+event_life_lose_life_skip
     rts
 ;---
 ; function for displaying game over, still under construction
 ;---
+
+
 event_game_over
-    jmp     start
+    lda     WIN_FLAG
+    beq     event_game_over_no_prev_win
+
+    lda     decode_loop+4
+    sec     
+    sbc     #$26
+    sta     decode_loop+4
+    lda     decode_loop+15
+    sec     
+    sbc     #$26
+    sta     decode_loop+15
+    dec     WIN_FLAG
+
+event_game_over_no_prev_win
+
+    lda     #$96
+    sta     $9002
+    lda     #$ae
+    sta     $9003
+    lda     #$f0
+    sta     $9005
+    jmp     title
+
+event_victory
+    lda     WIN_FLAG
+    bne     event_victory_won_before
+
+    lda     decode_loop+4
+    clc     
+    adc     #$26
+    sta     decode_loop+4
+    lda     decode_loop+15
+    clc     
+    adc     #$26
+    sta     decode_loop+15
+    inc     WIN_FLAG
+
+event_victory_won_before
+    lda     #$96
+    sta     $9002
+    lda     #$ae
+    sta     $9003
+    lda     #$f0
+    sta     $9005
+            ;decode_loop +4 low byte +5 high byte
+
+    jmp     title
+
 
 ;---
 ; load life to accmulator
@@ -706,13 +966,37 @@ set_life
     sta     STATUS
     rts
 
+teleport
+
+    lda     #2
+    sta     X_POS
+    lda     #4
+    sta     Y_POS
+
+
+
+
+    rts
+
 ;***********************************
 ; initialize the game
 ;***********************************
 init            ; call routine in the beginning.
 
+    ; change the lda instructions for the map to start of map, in case we modified it before
+    lda     #$16
+    sta     read_col_loop+2     
+    sta     read_col_loop+17   
+    ; revert the over self modifying
+    ; jsr     revert_data_label_addr
+
+
+    ; setting audio speakers volume
+    lda     #15
+    STA     AU_VOL ; POKE 36878 15 (from book)
+
     ;       setting init values of player x y coords
-    lda     #5
+    lda     #20
     sta     X_POS
     lda     #10
     sta     Y_POS
@@ -721,11 +1005,11 @@ init            ; call routine in the beginning.
     lda     #255
     sta     $9005 ; POKE 36869 255 (from book)
 
-;   Switching to 8x16 character set (setting bit 0 of 0x9003 to 1) 
+;   Switching to 8x16 character set (setting bit 0 of 0x9003 to 1)
 ;   and setting number of rows on screen to 12 (setting bits 1-6 of 0x9003 to 12)
 ;   this gives us 252 or 0xFC characters displayed on screen at once - fits in one byte. (nice)
-    lda     $9003           
-    and     #%10000000      ; clear bits 0-6 
+    lda     $9003
+    and     #%10000000      ; clear bits 0-6
     ora     #%10011001      ; setting bit 0 to 1, bits 1-6 to 001100 (12)
     sta     $9003           ; store it
 ;setting columns # to 21: (bits 0-6 of 0x9002 control the # of col)
@@ -735,25 +1019,42 @@ init            ; call routine in the beginning.
     sta     $9002
 
 ; clearing screen in beginning of game (writing char 00 to all 252 tiles)
-    lda     #0          ; selecting char 0 
-    ldx     #0          ; loop counter
-    stx     C_COL       ; 0 initialized variables:
+    lda     #0              ; selecting char 0
+    ldx     #0              ; loop counter
+    stx     C_COL           ; 0 initialized variables:
     stx     MAP_READ_PTR
-whitescreen             ; probably change this to a JSRable function later 
+    stx     AUDIO_TIMER
+    stx     SCROLLING_FLAG  ; initialize scrolling flag with 1 (not scrolling)
+    dex                     ; bring x back to 0 for loop
+
+whitescreen             ; probably change this to a JSRable function later
     sta     MAP,X
-    inx     
+    inx
     cpx     #$FC    ; 252 (size of screen) the execution falls through when x == 252
     bne     whitescreen
 
 ;   Next, fill 0x9600 - 0x96FC (color RAM) with $00 (turn them all on, black color)
     lda     #$00
     ldx     #$00
-color_ram 
+color_ram
     sta     $9600,X
-    inx   
+    inx
     cpx     #$FC
     bne     color_ram
     sta     $9600,X
+
+    lda     #1          ; selecting char 1, init ground under player
+    sta     $1bff   
+   ;   loop to set the bottom row of the characters to character 00001, written to map array
+    lda     #5          ; selecting char 1
+    ldx     #0          ; loop counter
+add_clouds              ; puts clouds in chars 0 to 21
+    sta     MAP,X     
+    inx     
+    cpx     #21    ; 
+    bne     add_clouds 
+
+
 status_init
     lda     #%00011000      ; iniital life of 3,other flags to be 0
     sta     STATUS
@@ -770,7 +1071,7 @@ ror_loop
     and     #%00000001      ; bit mask testing for last bit of the byte
     bne     ror_set         ; if zero flag is 0, need to set carry, else fall through
 
-    clc                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)
     jmp     ror_p2
 ror_set                     ; set carry cause bit was 1 (if)
     sec
@@ -789,102 +1090,92 @@ rol_loop
     lda     $1c50,X            ; 1c50 is char 5 (clouds)
     and     #%10000000      ; bit mask testing for last bit of the byte
     bne     rol_set         ; if zero flag is 0, need to set carry, else fall through
-    clc                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)
     jmp     rol_p2
 rol_set                     ; set carry cause bit was 1 (if)
     sec
 
 rol_p2
     rol     $1c50,X
-    inx     
+    inx
     cpx     #16
     bne     rol_loop
     rts
 
 
 
-;******
-;test usage code
-;*****
+; ;******
+; ;test usage code
+; ;*****
 draw_ladder_test
 
-    lda     #10
-    sta     X_TMP
-    lda     #10
-    sta     Y_TMP
-    jsr     coord_to_index
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6 ;ladder
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #6
-    sta     MAP,X
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #7  ;connector
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    dec     X_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
-    lda     #12
-    sta     X_TMP
-    lda     #10
-    sta     Y_TMP
-    jsr     coord_to_index
-    lda     #1 ;ground
-    sta     MAP,X
+;     lda     #10
+;     sta     X_TMP
+;     lda     #10
+;     sta     Y_TMP
+;     jsr     coord_to_index
+
+;     ldy     #0
+; draw_ladder_test_ladder
+;     lda     #6 ;ladder
+;     sta     MAP,X
+;     dec     Y_TMP
+;     jsr     coord_to_index
+;     iny
+;     cpy     #6
+;     bne     draw_ladder_test_ladder
+
+; draw_ladder_test_ladder_connector
+;     jsr     coord_to_index
+;     lda     #7  ;connector
+;     sta     MAP,X
+
+;     ldy     #0
+; draw_ladder_test_ground
+;     dec     X_TMP
+;     jsr     coord_to_index
+;     lda     #1 ;ground
+;     sta     MAP,X
+;     iny
+;     cpy     #7
+;     bne     draw_ladder_test_ground
+;     lda     #12
+;     sta     X_TMP
+;     lda     #10
+;     sta     Y_TMP
+;     jsr     coord_to_index
+;     lda     #1 ;ground
+;     sta     MAP,X
+;     rts
+
+test_code ;[test purpose code,need to be removed at the end
+;         ; init sad guys (for testing)
+;     lda     #3
+;     ldx     #101
+;     sta     MAP,X
+;     ldx     #142
+;     sta     MAP,X
+;     ldx     #208
+;     sta     MAP,X
+;     ldx     #82
+;     sta     MAP,X
     rts
 
+scroll_one_col_with_scroll_flag
+    ldx     X_POS           ; load X_POS into X_reg (this sets the negative flag if it was negative!)
+    beq     scroll_one_col_with_scroll_flag__end_scroll     ; x position is 0 (exit loop)
+    jsr     scroll_one_column
+    jmp     scroll_one_col_with_scroll_flag__continue
+scroll_one_col_with_scroll_flag__end_scroll
+    inc     SCROLLING_FLAG      ; set scrolling flag to 1 (no scroll)
+scroll_one_col_with_scroll_flag__continue
+    ; put player back on map for animation
+    jsr     player_pos_to_tmp   ; store player position into the temporary positions
+    jsr     coord_to_index      ; get index into map array inside X_reg
+    lda     #2
+    sta     MAP,X             ; in case the player position changes. If it doesn't,
 
+    jmp     draw
 
 
 ;   read column function: reads a column in from the map array and puts it into TMP_COL array.
@@ -893,6 +1184,7 @@ read_column        ; routine to read the next column in from the map.
                             ; Output: TMP_COL[8] will contain the characters of the column just read
                             ; Modifies: A_reg, Y_reg, X_reg
     ; first fill with air:
+    jsr     audio_scroll
     lda     #0
     tay     ;y as counter to go through 0 to 7 y value!
 col_blank_fill
@@ -902,26 +1194,34 @@ col_blank_fill
     bne     col_blank_fill
     ldx     MAP_READ_PTR ; load current column array index into X_reg 
 read_col_loop
-    lda     map1,X     ; read from map storage at index s
-    beq     read_col_done
+    lda     map1,X     ; read from map storage at index X_reg
+    beq     read_col_done         ; end of column flag
     cmp     #$FF
-    beq     read_col_done
+    beq     read_col_done         ; end of map flag
     ; else, check what we just loaded and put it in correct location.
     lsr
     lsr     ; DIVIDE BY 32 ! HAHA!  (only takes 5 bytes)
     lsr     ; since y value is stored in bits 765, we need to put it 
     lsr     ; in bits 210 so that we can use it as an INDEX!!
     lsr
-    tay     ;; store that in Y
+    tay     ; store that in Y
     lda     map1,X     ; read same thing into A again
     and     #%00011111  ; bit mask out the 765 bits (we don't need them anymore)
     sta     TMP_COL,Y   ; store the char value at Y that we just Read
     inx     
+    beq     increment_map_origin ; if inx set zero flag, means we wrapped around – need to go to next "page" of the map..
     jmp     read_col_loop
 read_col_done
     inx     ; inx so that we have increased x for next read
     stx     MAP_READ_PTR
     rts ; return from routine
+
+increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1, 
+                            ; skipping the address referenced by the code forward by 256 bytes.
+                            ; oh god self modifying code
+    inc     read_col_loop+2     
+    inc     read_col_loop+17   
+    jmp     read_col_loop
 
 
 write_col_to_x_on_screen        ; Routine to write the column read from map encoding,
@@ -983,31 +1283,163 @@ x_notneg
     rts
 
 
+
+; audio routines
+; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
+audio_noise ; activate the audio playback for noise oscilator
+    lda     AUDIO_TIMER
+    bne     audio_noise_quit            ; if not 0, dont play
+    lda     #128
+    STA     AU_NO  ; start playing noise
+    inc     AUDIO_TIMER
+
+
+
+audio_noise_quit
+    rts
+
+audio_scroll ; activate the audio playback for noise oscilator
+    lda     AUDIO_TIMER
+    bne     audio_scroll_quit            ; if not 0, dont play
+    ; lda     #128
+    ; STA     AU_HI ; play a tone on the speaker
+    lda     #212
+    STA     AU_HI ; play a tone on the speaker
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+
+
+
+
+audio_scroll_quit
+    rts
+
+audio_shoot ; activate the audio playback for note oscilator
+    lda     AUDIO_TIMER
+    bne     audio_shoot_quit            ; if not 0, dont play
+    lda     #240
+    STA     AU_HI ; play a tone on the speaker
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+    inc     AUDIO_TIMER
+
+audio_shoot_quit
+    rts
+
+audio_update        ;; call this at the end of every frame to update audio
+    lda     AUDIO_TIMER
+    beq     audio_update_done
+    ; else dec
+    dec     AUDIO_TIMER
+    STA     AU_NO ; POKE 36878 15 (from book)
+    STA     AU_HI ; POKE 36878 15 (from book)
+    beq     audio_update_done ; if it is 0, then no sounds are playing, so we do not need to do anything
+    ; else!
+    ; eor     #%00000001  ; check for
+
+audio_update_done
+    rts
+
+event_handle_floor_fill
+    tay
+    txa
+    clc
+    adc     #85
+    tax
+    lda     #21
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx 
+    sta     MAP,X
+    inx 
+    sta     MAP,X
+    txa
+    sec
+    sbc     #92
+    tax
+    tya
+    rts
+
+
+
+
+
+
 /*
 ;   END OF CODE, START OF DATA
 */
 
 
-; MAP 1 ENCODING:
-map1          
-    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
-    HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
-    HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
-    HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
-    HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
-    HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
-    HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 a1 e1 00 43 
-    HEX 61 a1 e1 00 43 61 a1 e1 00 61 a1 e1 00 86 a6 c6 
-    HEX e1 00 e1 00 c3 e1 00 c3 e1 00 c3 e1 FF
-;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
-;     HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
-;     HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
-;     HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
-;     HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
-;     HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
-;     HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 e1 00 43 61 
-;     HEX e1 00 43 61 e1 00 61 e1 00 86 a6 c6 e1 00 e1 00 
-;     HEX c3 e1 00 c3 e1 00 c3 e1 FF
+; MAP ENCODING:
+map1   
+    HEX 01 89 a1 e1 00 01 21 41 61 81 a1 e1 00 26 46 66 
+    HEX 86 e1 00 35 86 a6 c6 e1 00 35 81 e1 00 35 81 e1 
+    HEX 00 35 73 81 e1 00 00 00 00 00 00 00 00 e1 00 e1 
+    HEX 00 21 d1 e1 00 21 66 86 a6 c6 e1 00 21 75 e1 00 ;   Bytes: 64
+
+    HEX 21 b5 e1 00 21 66 86 b5 e1 00 21 43 95 c3 e1 00 
+    HEX 21 95 e1 00 21 95 e1 00 21 95 e1 00 21 95 e1 00 
+    HEX 21 95 e1 00 21 95 e1 00 21 95 c3 e1 00 21 95 c3 
+    HEX e1 00 21 95 e1 00 11 21 95 d2 e1 00 21 95 00 29 ;   Bytes: 128
+
+    HEX 86 a6 c6 e1 00 06 21 d1 e1 00 01 21 e1 00 01 e1 
+    HEX 00 01 e1 00 13 63 e1 00 01 21 41 61 d1 e1 00 e1 
+    HEX 00 e1 00 e1 00 e1 00 e1 00 e1 00 66 e1 00 75 e1 
+    HEX 00 75 e1 00 75 e1 00 75 e1 00 26 46 75 e1 00 35 ;   Bytes: 192
+
+    HEX a6 c6 e1 00 35 a6 00 09 35 a6 c6 e1 00 35 e1 00 
+    HEX 35 e1 00 33 51 d1 e1 00 11 35 e1 00 35 e1 00 23 
+    HEX e1 00 23 e1 00 23 e1 00 23 e1 00 23 e1 00 09 23 
+    HEX e1 00 13 23 e1 00 23 e1 00 c3 e1 00 01 21 41 63 ;   Bytes: 256
+
+    HEX 81 a1 c3 e1 00 71 d1 e1 00 e1 00 e1 00 e1 00 26 
+    HEX 46 66 95 e1 00 21 a9 e1 00 21 e1 00 21 e1 00 21 
+    HEX 41 61 a1 e1 00 35 e1 00 35 e1 00 11 35 e1 00 d1 
+    HEX e1 00 41 89 a1 e1 00 21 41 81 a1 e1 00 01 21 95 ;   Bytes: 320
+
+    HEX e1 00 21 95 b2 c6 e1 00 95 e1 00 26 46 66 95 e1 
+    HEX 00 35 e1 00 35 d1 e1 00 33 00 31 e1 00 e1 00 a3 
+    HEX e1 00 e1 00 e1 00 e1 00 01 63 89 d1 e1 00 01 21 
+    HEX 41 61 81 e1 00 81 c6 e1 00 81 c6 00 01 21 41 81 ;   Bytes: 384
+
+    HEX c6 e1 00 21 81 e1 00 21 71 81 e1 00 21 81 e1 00 
+    HEX 21 72 81 e1 00 21 81 e1 00 13 21 81 e1 00 e1 00 
+    HEX e1 00 26 46 66 e1 00 49 e1 00 49 e1 00 51 e1 00 
+    HEX 49 d1 e1 00 51 e1 00 51 e1 00 51 e1 00 51 e1 00 ;   Bytes: 448
+
+    HEX 41 e1 00 33 41 e1 00 e1 00 e1 00 e1 00 b2 c6 e1 
+    HEX 00 e1 00 e1 00 11 21 e1 00 21 e1 00 06 26 46 66 
+    HEX 86 b5 e1 00 15 e1 00 15 d1 e1 00 15 e1 00 15 e1 
+    HEX 00 15 e1 00 13 e1 00 00 00 00 00 e1 00 e1 00 e1 ;   Bytes: 512
+
+    HEX 00 e1 00 d1 e1 00 35 66 86 a6 c6 e1 00 35 75 e1 
+    HEX 00 35 75 e1 00 35 75 e1 00 35 43 83 c3 e1 00 35 
+    HEX e1 00 35 e1 00 35 e1 00 35 e1 00 35 e1 00 35 d2 
+    HEX e1 00 35 e1 00 29 00 03 35 f5 00 11 35 d1 f5 00 ;   Bytes: 576
+
+    HEX 35 86 a6 c6 f5 00 35 95 00 35 95 00 35 95 00 35 
+    HEX 95 00 03 35 63 95 00 35 95 00 35 95 00 21 41 66 
+    HEX 81 a1 c1 e1 00 e1 00 01 21 61 e1 00 49 61 e1 00 
+    HEX 51 61 e1 00 d2 e1 00 e1 00 d1 e1 00 06 26 46 66 ;   Bytes: 640
+
+    HEX 86 a6 c6 e1 00 06 00 06 00 06 b5 00 06 b5 00 06 
+    HEX b5 00 06 b5 00 06 b5 00 06 b5 00 06 b5 00 06 26 
+    HEX 46 66 86 a6 c6 e1 00 e1 00 d2 e1 00 c9 e1 00 e1 
+    HEX 00 d1 e1 00 e1 00 c3 e1 00 a3 e1 00 c3 e1 00 a3 ;   Bytes: 704
+
+    HEX e1 00 c3 e1 00 26 46 66 86 a6 c6 e1 00 14 35 00 
+    HEX FF
+                                                        ;   Total map size: 720 Bytes
 
 
     ; map array. in case we want to have something there at game start,
@@ -1046,58 +1478,60 @@ map1
     dc.b    #%00000000
 
     ;       CHAR 01 - ground tile
-    dc.b    #%11111101    
-    dc.b    #%11011010
-    dc.b    #%10010111
-    dc.b    #%11011101 
-    dc.b    #%10111111
-    dc.b    #%11000011
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-    dc.b    #%00000000
-
-    ;       CHAR 02 - PLAYER placeholder
-    dc.b    #%11111111
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10010001
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
     dc.b    #%10111101
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10000001
     dc.b    #%11111111
+    dc.b    #%10111011
+    dc.b    #%11001111
+    dc.b    #%11111101
+    dc.b    #%10101011
+    dc.b    #%11101100
     dc.b    #%11111111
+    dc.b    #%10111111
+    dc.b    #%11111011
+    dc.b    #%11010011
+    dc.b    #%01101111
+    dc.b    #%00111011
+    dc.b    #%10111101
+    dc.b    #%10111111
+    dc.b    #%10110110
+
+
+
+    ;       CHAR 02 - PLAYER running right 1
+    dc.b    #%00111100
+    dc.b    #%00111111
+    dc.b    #%00100010
+    dc.b    #%00100110
+    dc.b    #%00100010
+    dc.b    #%00010100
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00011000
+    dc.b    #%00101100
+    dc.b    #%11101010
+    dc.b    #%00101000
+    dc.b    #%00101100
+    dc.b    #%00010100
+    dc.b    #%00100010
 
     ;       CHAR 03 - PLAYER SAD placeholder (lol)
-    dc.b    #%11111111
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10100101
-    dc.b    #%10000101
-    dc.b    #%10000001
-    dc.b    #%10010001
-    dc.b    #%10000001
-    dc.b    #%10000001
-    dc.b    #%10011001
+    dc.b    #%00000000
+    dc.b    #%01100110
     dc.b    #%10100101
     dc.b    #%10100101
-    dc.b    #%10000001
-    dc.b    #%10000001
+    dc.b    #%00111100
+    dc.b    #%01000010
     dc.b    #%11111111
-    dc.b    #%11111111
+    dc.b    #%11011011
+    dc.b    #%01000010
+    dc.b    #%00111100
+    dc.b    #%11100111
+    dc.b    #%10100101
+    dc.b    #%10100101
+    dc.b    #%10100101
+    dc.b    #%00100100
+    dc.b    #%00100100
 
     ;       CHAR 04 - projectile placeholder 
     dc.b    #%00000000
@@ -1210,3 +1644,220 @@ map1
     dc.b    #%00000000
     dc.b    #%00000000
     dc.b    #%00000000
+
+    ;       CHAR 10 PLAYER IDLE 1
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%10101100
+    dc.b    #%00100100
+    dc.b    #%00100000
+    dc.b    #%01010000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    ;       CHAR 11 PLAYER IDLE 2
+    dc.b    #%00000000
+    dc.b    #%11110000
+    dc.b    #%11111110
+    dc.b    #%10001000
+    dc.b    #%10011000
+    dc.b    #%10001000
+    dc.b    #%01010000
+    dc.b    #%00100000
+    dc.b    #%00100000
+    dc.b    #%01110000
+    dc.b    #%10110111
+    dc.b    #%01101100
+    dc.b    #%00100100
+    dc.b    #%01110000
+    dc.b    #%10001000
+    dc.b    #%10001000
+
+    ;       CHAR 12 PLAYER CLIMBING 1
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11111011
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11000111
+    dc.b    #%11111011
+    dc.b    #%11010111
+    dc.b    #%11111011
+    dc.b    #%11010011
+    dc.b    #%11010011
+    dc.b    #%11111111
+    dc.b    #%11100111
+    dc.b    #%11100011
+    dc.b    #%11111111
+    dc.b    #%11000011
+
+    ;       CHAR 13 PLAYER CLIMBING 2
+    dc.b    #%11000011
+    dc.b    #%11111111
+    dc.b    #%11011111
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11100011
+    dc.b    #%11011111
+    dc.b    #%11101011
+    dc.b    #%11011111
+    dc.b    #%11001011
+    dc.b    #%11001011
+    dc.b    #%11111111
+    dc.b    #%11010111
+    dc.b    #%11100111
+    dc.b    #%11111111
+    dc.b    #%11000011
+
+    ;       Char 14 player running right 2 (1 is at pos 2)
+    dc.b    #%00111100
+    dc.b    #%00111111
+    dc.b    #%00100010
+    dc.b    #%00100110
+    dc.b    #%00100010
+    dc.b    #%00010100
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00001000
+    dc.b    #%00011000
+    dc.b    #%00101101
+    dc.b    #%11101010
+    dc.b    #%00101000
+    dc.b    #%00110100
+    dc.b    #%00010100
+    dc.b    #%00100010
+
+    ;       Char 15 player running left 1
+    dc.b    #%00111100
+    dc.b    #%11111100
+    dc.b    #%01000100
+    dc.b    #%01100100
+    dc.b    #%01000100
+    dc.b    #%00101000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00011000
+    dc.b    #%00110100
+    dc.b    #%01010111
+    dc.b    #%00010100
+    dc.b    #%00110100
+    dc.b    #%00101000
+    dc.b    #%01000100
+
+    ;       Char 16 player running left 2
+    dc.b    #%00111100
+    dc.b    #%11111100
+    dc.b    #%01000100
+    dc.b    #%01100100
+    dc.b    #%01000100
+    dc.b    #%00101000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00010000
+    dc.b    #%00011000
+    dc.b    #%10110100
+    dc.b    #%01010111
+    dc.b    #%00010100
+    dc.b    #%00101100
+    dc.b    #%00101000
+    dc.b    #%01000100
+
+    ;       Char 17 scroll button
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00111100
+    dc.b    #%00100100
+    dc.b    #%01111110
+    dc.b    #%01111110
+    dc.b    #%01111110
+
+    ; char 18 portal
+    dc.b    #%00000000
+    dc.b    #%00010000
+    dc.b    #%00110000
+    dc.b    #%11111100
+    dc.b    #%01100100
+    dc.b    #%00100110
+    dc.b    #%00000010
+    dc.b    #%01101010
+    dc.b    #%11011010
+    dc.b    #%10001010
+    dc.b    #%01001010
+    dc.b    #%00000010
+    dc.b    #%01100010
+    dc.b    #%00111100
+    dc.b    #%00011000
+    dc.b    #%00000000
+
+    ; char 19 - lever (floor fill)
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%11110000
+    dc.b    #%11101000
+    dc.b    #%10100000
+    dc.b    #%10110000
+    dc.b    #%00110000
+    dc.b    #%00111000
+    dc.b    #%00011000
+    dc.b    #%00011000
+    dc.b    #%00111100
+    dc.b    #%01111110
+    dc.b    #%01100110
+
+    ; char 20 DOOR
+    dc.b    #%11111111
+    dc.b    #%10011001
+    dc.b    #%10011001
+    dc.b    #%11111111
+    dc.b    #%10011001
+    dc.b    #%10011001
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111101
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+    dc.b    #%11111111
+
+    ;       CHAR 21 - plank 
+    dc.b    #%11111101    
+    dc.b    #%11011010
+    dc.b    #%10010111
+    dc.b    #%11011101 
+    dc.b    #%10111111
+    dc.b    #%11000011
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    dc.b    #%00000000
+    
