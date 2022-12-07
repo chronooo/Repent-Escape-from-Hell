@@ -856,6 +856,7 @@ game_over_wait_for_z
     jmp     game_over_wait_for_z
 game_over_wait_for_z_end
     jsr     title_screen_init
+    jmp     title
     rts
 ;---
 ; function for displaying game clear
@@ -883,8 +884,8 @@ game_clear
 game_clear_wait_for_z
     lda     CURKEY ;test current key
     cmp     #33 ; Z in current key table
-    beq     game_over_wait_for_z_end
-    jmp     game_over_wait_for_z
+    beq     game_clear_wait_for_z_end
+    jmp     game_clear_wait_for_z
 game_clear_wait_for_z_end
     jsr     title_screen_init
     rts
@@ -903,7 +904,6 @@ reset_screen_paras
     lda     $9005 ; POKE 36869 255 (from book)
     and     #$f0
     sta     $9005
-
     rts
 
 ;---
