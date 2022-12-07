@@ -16,7 +16,7 @@ STATUS =    $25     ; ZP 0x25: player character status. [god mode flag][2bit pre
 C_COL           =   $30     ; current column variable (which column are we on?)
 MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
 SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
-AUDIO_TIMER     =   $33     ; audio flag to keep track of the audio playback. 
+AUDIO_TIMER     =   $33     ; audio flag to keep track of the audio playback.
 
 
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
@@ -199,9 +199,9 @@ refresh_player_position_draw_prev_cell
 refresh_player_position_clear; clear the status correspoinding bits
     lda     STATUS
     and     #%10011111
-    sta     STATUS   
+    sta     STATUS
 
-    ; check if SCROLLING_FLAG =! 0 
+    ; check if SCROLLING_FLAG =! 0
     ; when SCROLLING_FLAG == 0, we want to disable player input, and scroll until the player is on leftmost column of the screen
     lda     SCROLLING_FLAG
     bne     get_input       ; if not scrolling, go to input as usual
@@ -215,6 +215,10 @@ get_input
     lda     CURKEY       ; loads the current pressed key from memory
     cmp     #10         ; if R is pressed, restart whole program
     beq     start
+    cmp     #50         ; T for Test purpose [test code]
+    beq     test_entry
+    cmp     #35         ; B for entering god modes swtich
+    beq     god_mode_switch
     cmp     #17         ; if A is pressed
     beq     a_left
     cmp     #18         ; if D is pressed
@@ -225,25 +229,29 @@ get_input
     beq     s_down
     cmp     #20         ; if J is pressed
     beq     j_shoot
-    cmp     #50         ; T for Test purpose
-    beq     test_code
-    cmp     #13         ; P for scroll 
+    cmp     #13         ; P for scroll
     beq     p_scroll
     jmp     update_next_frame
 
 exit_prg
     rts
-test_code       ;[temporary code]
-    ; init sad guys (for testing)
-    lda     #3
-    ldx     #101
-    sta     MAP,X     
-    ldx     #142
-    sta     MAP,X     
-    ldx     #208
-    sta     MAP,X     
-    ldx     #82
-    sta     MAP,X     
+test_entry       ;[temporary code]
+    jsr     test_code
+    jmp     update_next_frame
+god_mode_switch
+    lda     STATUS
+    and     #%10000000
+    cmp     #%10000000
+    beq     god_mode_off
+god_mode_on
+    lda     STATUS
+    ora     #%10000000
+    jmp     god_mode_store
+god_mode_off
+    lda     STATUS
+    and     #%01111111
+god_mode_store
+    sta     STATUS
     jmp     update_next_frame
 j_shoot
     jsr     audio_shoot
@@ -302,7 +310,7 @@ others
 
 key_pressed
     ;   need to fixup the x and y values in case we went out of bounds:
-    ;   we do NOT need to check both x and y for out of bounds, 
+    ;   we do NOT need to check both x and y for out of bounds,
     ;   since we know only one case can be satisfied at a time. (we only check one keypress per loop)
 
     ;   fixing x:   bound is (0 <= X_POS <= 20)
@@ -316,31 +324,66 @@ key_pressed
     bmi     neg_y           ; branch if Y_POS is negative, i.e Y_POS = FF because we just did Y_POS = 0 - 1
     cmp     #12             ; cmp Y_POS to 12 ; if it is equal, then we need to do Y_POS--
     beq     pos_y
-    jmp     update_next_frame   ; if our code reached here, means everything is in bounds, continue execution.    
+    jmp     update_next_frame   ; if our code reached here, means everything is in bounds, continue execution.
 pos_y
     dec     Y_POS
-    jmp     update_next_frame 
+    jmp     update_next_frame
 neg_y       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     Y_POS
-    jmp     update_next_frame   
+    jmp     update_next_frame
 pos_x
     dec     X_POS
-    jmp     update_next_frame 
+    jmp     update_next_frame
 neg_x       ; X_POS is negative (is FF), so need to do X_POS++, bring it back to 0
     inc     X_POS           ; no jmp here, just fall through.
 
 ; once we grabbed the input, update all the other stuff (projectile movement, enemy movement, death check, etc..)
 ; We will put all our game update stuff in here, then display at the end of the loop ("draw" label)
+
 update_next_frame
 
+falling_event
+    jsr     player_pos_to_tmp
+    inc     Y_TMP
+    jsr     coord_to_index
+    lda     MAP,X
+    cmp     #0      ;check the cell below player
+    beq     falling_counting
+    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
+    and     #%11111000
+    sta     STATUS
+    jmp     falling_skip
+falling_counting
+    lda     STATUS
+    and     #%00000111 ;load the timer value
+    cmp     #%1   ;chceck if it reached the timer
+    beq     falling_falls ;fall player if timer reach
+    inc     STATUS  ;if not, increase timer by 1
+    jmp     falling_skip
+falling_falls
+    inc     Y_POS
+    lda     STATUS
+    and     #%11111000 ;reset the timer back to 000
+    sta     STATUS
+falling_skip
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
     jsr     coord_to_index      ; compute player pos offset in map array (returned in X_reg)
     lda     MAP,X               ;load the exist map element
-    ;check existed element on map of the target cell
 
-    
+; handle events with objects existed at the target cell first;
+; usage: do not modify X or the target cell after moveiment;
+; cmp,then bne to the next available object,and finish at event_object_handling_done
 
+; example, touch a heart to gain extra life.
+event_object_handling
+event_object_inrease_life
+    cmp     #9 ;heart
+    bne     event_object_handling_done
+    jsr     event_life_increase_life
+;next object event
+event_object_handling_done
+    ;check existed element on map bttof the target cell
 update_next_frame_check_exist_ladder
     cmp     #6       ;is a ldder
     bne     update_next_frame_check_exist_ladder_connector
@@ -357,26 +400,26 @@ update_next_frame_check_exist_ladder_connector
     ora     #%01000000      ;*10*****; store ladder connector to status
     sta     STATUS
 update_next_frame_draw_man_over_ladder
-    
+
     lda     MOVCOUNTER      ;Check the movement counter to see what model to use
     cmp     #8              ;if we spent less than 8 frames in model 1 load it
     bcc     climb_frame_1
     jmp     climb_frame_counter_check ; load model 2 instead for 8 frames
 
-climb_frame_1 
+climb_frame_1
     lda     #12         ; climbing model 1
-    inc     MOVCOUNTER ; key pressed so change movement counter 
+    inc     MOVCOUNTER ; key pressed so change movement counter
     jmp     update_next_frame_player
 
-climb_frame_counter_check 
+climb_frame_counter_check
     lda     MOVCOUNTER
     cmp     #16             ;if model 2 is loaded for remaining 8 frames reset to 0
     beq     reset_mov_counter
     lda     #13
-    inc     MOVCOUNTER ; key pressed so change movement counter 
+    inc     MOVCOUNTER ; key pressed so change movement counter
     jmp     update_next_frame_player
 
-reset_mov_counter 
+reset_mov_counter
     lda     #0
     sta     MOVCOUNTER
     lda     #13
@@ -394,13 +437,13 @@ update_next_frame_exist_air
     jmp     update_next_frame_player
 
 update_next_frame_player_right
-    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
     cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
     bcc     right_frame_1 ; if we havent render right frame 1
     jmp     right_frame_2 ; if we have start rendering right frame 2
 
-right_frame_1 
-    inc     ANIMCOUNTER 
+right_frame_1
+    inc     ANIMCOUNTER
     lda     #2         ; pos of right frame  1 for player
     jmp     update_next_frame_player
 
@@ -411,23 +454,23 @@ resetRunCounter
 
 right_frame_2
     inc     ANIMCOUNTER
-    lda     ANIMCOUNTER 
+    lda     ANIMCOUNTER
     cmp     #16         ;If weve spent 8 frames in right frame 2 reset counter
                         ; and go back to right frame 1
-    beq     resetRunCounter 
+    beq     resetRunCounter
 
 right_frame_3
     lda     #14
     jmp     update_next_frame_player
 
 update_next_frame_player_left
-    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
     cmp     #8          ;Check if weve been in the right animation 1 for 8 frames
     bcc     left_frame_1 ; if we havent render left frame 1
     jmp     left_frame_2 ; if we have start rendering left frame 2
 
-left_frame_1 
-    inc     ANIMCOUNTER 
+left_frame_1
+    inc     ANIMCOUNTER
     lda     #15         ; pos of left frame  1 for player
     jmp     update_next_frame_player
 
@@ -438,24 +481,24 @@ resetRunCounter2
 
 left_frame_2
     inc     ANIMCOUNTER
-    lda     ANIMCOUNTER 
+    lda     ANIMCOUNTER
     cmp     #16         ;If weve spent 8 frames in left frame 2 reset counter
                         ; and go back to left frame 1
-    beq     resetRunCounter2 
+    beq     resetRunCounter2
 
 left_frame_3
     lda     #16     ; left frame 2
     jmp     update_next_frame_player
 
-update_next_frame_player_idle 
+update_next_frame_player_idle
 
-    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP 
+    lda     ANIMCOUNTER ;Grab which animation frame we should be on from ZP
     cmp     #8          ;Check if weve been in the idle animation 1 for 8 frames
     bcc     idle_frame_1 ; if we havent render idle frame 1
     jmp     idle_frame_2 ; if we have start rendering idle frame 2
 
 idle_frame_1
-    inc     ANIMCOUNTER 
+    inc     ANIMCOUNTER
     lda     #10         ; pos of idle frame  1 for player
     jmp     update_next_frame_player
 resetAnimCounter
@@ -465,10 +508,10 @@ resetAnimCounter
 
 idle_frame_2
     inc     ANIMCOUNTER
-    lda     ANIMCOUNTER 
+    lda     ANIMCOUNTER
     cmp     #16         ;If weve spent 8 frames in idle frame 2 reset counter
                         ; and go back to idle frame 1
-    beq     resetAnimCounter 
+    beq     resetAnimCounter
 
 idle_frame_3
     lda     #11
@@ -477,7 +520,8 @@ idle_frame_3
 update_next_frame_player
     sta     MAP,X             ; store it at the player's position
 
-    ;   showing number of lifs available at the top
+life_status_update
+    ;   showing number of lifes available at the top
     ;   loop to set the bottom row of the characters to character 00001, written to map array
     clc
     jsr     load_life
@@ -495,36 +539,7 @@ add_life_symbol              ; puts add life symbols in line2
     cpx     $0;
     bne     add_life_symbol
 
-falling_event
-    lda     X_POS
-    sta     X_TMP
-    lda     Y_POS
-    sta     Y_TMP
-    inc     Y_TMP
-    jsr     coord_to_index 
-    lda     MAP,X
-    cmp     #0      ;check the cell below player
-    beq     falling_counting
-    lda     STATUS ;if the cell below is not air ,reset falling timer to 0
-    and     #%11111000
-    sta     STATUS
-    jmp     proj_event
-falling_counting 
-    lda     STATUS
-    and     #%00000111 ;load the timer value
-    cmp     #%1   ;chceck if it reached the timer
-    beq     falling_falls ;fall player if timer reach
-    inc     STATUS  ;if not, increase timer by 1 
-    jmp     proj_event
-falling_falls
-    dec     Y_TMP
-    jsr     coord_to_index
-    lda     #0             ;load air
-    sta     MAP,X          ;store the air to the position before
-    inc     Y_POS
-    lda     STATUS
-    and     #%11111000 ;reset the timer back to 000
-    sta     STATUS
+
 
 proj_event
     ;   important: do not destroy value of X during the tile updates. we are using it to iterate thru the array.
@@ -541,12 +556,12 @@ update_map_loop
     cmp     #%00000011          ;if this an enemy charging  UNCOMMENT THESE 2 LINES TO MAKE ENEMY CHARGE AGAIN!
     beq     proj_update
 post_proj_update
-    inx                         
+    inx
     cpx     #$FC            ; is X == 0xFC?
     bne     update_map_loop ; if not, update next character. If X == 0xFC, fall through.
     jmp     draw            ; go to draw section
 
-proj_update                  
+proj_update
     tya                         ; restore A_reg
     and     #%11100000          ; get the the most significant 3 bits in A_reg (proj timer)
     cmp     #%11100000          ; is the proj timer == 111?
@@ -563,10 +578,10 @@ proj_move                       ; MOVE the projectile if its time has come (bits
     txa                         ; transfer index (offset) to A in order to retrieve coordinates via routine
     jsr     index_to_coord      ; call routine, get (x, y) of index in X_TMP, Y_TMP
     lda     X_TMP               ; load X value of projectile coordinate for comparison
-    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile. 
+    cmp     #20                 ; if x == 20, we are on edge of map. delete the projectile.
     beq     proj_gone
     cmp     #0
-    beq     proj_gone           ; if x == 0, we are on edge of map. delete the projectile. 
+    beq     proj_gone           ; if x == 0, we are on edge of map. delete the projectile.
 
     ; is the projectile going to hit something? check what is in front of projectile.
     ;else, x+=1, and store that.
@@ -577,7 +592,7 @@ proj_move                       ; MOVE the projectile if its time has come (bits
     beq     proj_left_move
 proj_left_move
     dex     ; get index of tile left in front of projectile
-    jmp     proj_check 
+    jmp     proj_check
 proj_right_move
     inx                         ; get index of tile right in front of projectile
 proj_check
@@ -609,12 +624,12 @@ proj_update_to_map_shoting_player
     sta      MAP,X              ; store projectile into the tile to the left of it
     inx                         ; set X back
 proj_upate_to_map_cleared_existed_projecticle
-    lda     #0               
+    lda     #0
     sta     MAP,X               ; write 0 to where projectile just was
     jmp     post_proj_update    ; go back to loop .
 
 proj_hit_enemy
-    lda     #0                  
+    lda     #0
     sta     MAP,X               ; write 0 to enemy location (kill it)
 proj_kill
     cpy     #$03
@@ -631,7 +646,7 @@ proj_hit_player
     jsr     event_life          ;make player lose life by one
     inx                         ;fall back  in order to remove proj
 proj_gone
-    lda     #0      
+    lda     #0
     sta     MAP,X               ; store 0 – whitespace, into where the projectile location.
     jmp     post_proj_update    ; go back to loop .
 
@@ -644,7 +659,7 @@ proj_gone
 
 draw    ; label to jump to when we want to skip to rendering step from some reason
 
-        ; loop that goes through all the 252 bytes of the map object array (0x1B04-0x1BFF) 
+        ; loop that goes through all the 252 bytes of the map object array (0x1B04-0x1BFF)
         ; and writes the corresponsing character to screen memory.
         ; does not really matter that we are drawing stuff every frame, vic is too fast anyway (i think)
 
@@ -657,7 +672,7 @@ drawloop
     and     #%00011111      ; get the the least significant 5 bits in A_reg (char index)
 ;   now that we have the character index in A_Reg, store that at corresponsing screen memory location
     sta     $1e00,X         ; use same offset (X) for screen memory storage.
-    inx                         
+    inx
     cpx     #$FC            ; is X == 0xFC?
     bne     drawloop        ; if not, draw next character. If X == 0xFC, fall through.
 
@@ -676,13 +691,13 @@ coord_to_index              ; routine to compute offset from MAP from x, y value
                             ; Input: X value in X_TMP, Y value in Y_TMP ZP locations.
                             ; Output: index in X register
                             ; Modifies: A_reg, X_reg
-                            ; formula is index(x,y) = 21y + x 
-                            
+                            ; formula is index(x,y) = 21y + x
+
     ldx     Y_TMP           ; load Y_POS into X, use as loop counter when adding
     lda     #0
 y_mult_loop                 ; loop to compute A_reg = 21 * X
     cpx     #0              ; if x is 0, quit multiplication loop
-    beq     add_x           
+    beq     add_x
     clc                     ; clear carry before add
     adc     #21             ; add 21
     dex                     ; decrement X
@@ -690,17 +705,17 @@ y_mult_loop                 ; loop to compute A_reg = 21 * X
 add_x
     clc                     ; clc before add
     adc     X_TMP           ; A_reg += Y_POS
-    tax                     ; return in X for convenience 
+    tax                     ; return in X for convenience
                             ; (all the times we want to use it, we use it as an offset (ex: sta 00,X)
     rts                     ; return from routine
 
 
-index_to_coord              ; routine to compute (x, y) coordinates and store them in X_TMP, Y_TMP 
+index_to_coord              ; routine to compute (x, y) coordinates and store them in X_TMP, Y_TMP
                             ; Input: map array index in A_reg
                             ; Output: X value in X_TMP, Y value in Y_TMP ZP locations.
                             ; Modifies: A_reg, Y_reg
     ldy     #0              ; use Y_reg to count the Y coordinate
-y_div_loop    
+y_div_loop
     cmp     #21             ; is A_reg less than 21?
     bcc     remainder       ; if it is, done with loop
     iny                     ; add 1 to the y coordinate counter
@@ -724,11 +739,11 @@ player_pos_to_tmp
 waste_time
 waste_time_loop_outer
     ldy     #0
-waste_time_loop_inner             
+waste_time_loop_inner
     iny
     cpy     $FF             ; waste time by counting up to 255 in Y reg
     bne     waste_time_loop_inner
-    dex     
+    dex
     cpx     #0
     bne     waste_time_loop_outer
     rts
@@ -742,7 +757,7 @@ waste_time_loop_inner
 ;read:  Y = 0 check if allow move left
 ;       Y = 1 check if allow move right
 ;       Y = 2 check if allow move up
-;       Y = 3 check iff allow move down                     
+;       Y = 3 check iff allow move down
 ;output: set Y to 1 if leagl move, or Y to 0 illegal move, or set Y to FF to be a error flag.
 ;-------
 check_legal_move
@@ -764,7 +779,7 @@ check_legal_move_horizontal
     rts     ;others, destory Y.
 check_legal_move_left
     dec     X_TMP
-    jmp     check_legal_move_horizontal_chceck 
+    jmp     check_legal_move_horizontal_chceck
 check_legal_move_right
     inc     X_TMP
 check_legal_move_horizontal_chceck
@@ -773,6 +788,8 @@ check_legal_move_horizontal_chceck
     cmp     #0     ;is air?
     beq     check_legal_move_true
     cmp     #6     ;is ladder
+    beq     check_legal_move_true
+    cmp     #9     ; is heart
     beq     check_legal_move_true
     jmp     check_legal_move_false
 check_legal_move_down
@@ -796,31 +813,33 @@ check_legal_move_true
 ;life events:add or lose life(trigger dead)
 ;if y ==0? lose life by one. If others, incrase life by 1.
 ;---------
-event_life
-    tya
-    cmp     #$0 ;if a ==0? lose life by one. If others, incrase life by 1.
-    beq     event_life_lose_life
 event_life_increase_life
     jsr     load_life
     adc     #1                  ;add life by 1 (carry cleared in the previous step)
     cmp     #%00000100          ;check if life overflowed
-    beq     event_life_end      ;maximum life reached, nothing to do
+    beq     event_life_increase_life_skip      ;maximum life reached, nothing to do
     tay
     jsr     set_life
+event_life_increase_life_skip
     rts
 event_life_lose_life
+    lda     STATUS
+    and     #%10000000
+    cmp     #%10000000
+    bne     event_life_lose_life_skip
     jsr     load_life
     cmp     #$1
     beq     event_game_over     ;last life lost result in game over.
     tay
     dey
     jsr     set_life
-    rts
-event_life_end
+event_life_lose_life_skip
     rts
 ;---
 ; function for displaying game over, still under construction
 ;---
+
+
 event_game_over
     jmp     start
 
@@ -870,11 +889,11 @@ init            ; call routine in the beginning.
     lda     #255
     sta     $9005 ; POKE 36869 255 (from book)
 
-;   Switching to 8x16 character set (setting bit 0 of 0x9003 to 1) 
+;   Switching to 8x16 character set (setting bit 0 of 0x9003 to 1)
 ;   and setting number of rows on screen to 12 (setting bits 1-6 of 0x9003 to 12)
 ;   this gives us 252 or 0xFC characters displayed on screen at once - fits in one byte. (nice)
-    lda     $9003           
-    and     #%10000000      ; clear bits 0-6 
+    lda     $9003
+    and     #%10000000      ; clear bits 0-6
     ora     #%10011001      ; setting bit 0 to 1, bits 1-6 to 001100 (12)
     sta     $9003           ; store it
 ;setting columns # to 21: (bits 0-6 of 0x9002 control the # of col)
@@ -884,27 +903,27 @@ init            ; call routine in the beginning.
     sta     $9002
 
 ; clearing screen in beginning of game (writing char 00 to all 252 tiles)
-    lda     #0              ; selecting char 0 
+    lda     #0              ; selecting char 0
     ldx     #0              ; loop counter
     stx     C_COL           ; 0 initialized variables:
     stx     MAP_READ_PTR
     stx     AUDIO_TIMER
-    inx     
+    inx
     stx     SCROLLING_FLAG  ; initialize scrolling flag with 1 (not scrolling)
     dex                     ; bring x back to 0 for loop
 
-whitescreen             ; probably change this to a JSRable function later 
+whitescreen             ; probably change this to a JSRable function later
     sta     MAP,X
-    inx     
+    inx
     cpx     #$FC    ; 252 (size of screen) the execution falls through when x == 252
     bne     whitescreen
 
 ;   Next, fill 0x9600 - 0x96FC (color RAM) with $00 (turn them all on, black color)
     lda     #$00
     ldx     #$00
-color_ram 
+color_ram
     sta     $9600,X
-    inx   
+    inx
     cpx     #$FC
     bne     color_ram
     sta     $9600,X
@@ -924,7 +943,7 @@ ror_loop
     and     #%00000001      ; bit mask testing for last bit of the byte
     bne     ror_set         ; if zero flag is 0, need to set carry, else fall through
 
-    clc                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)
     jmp     ror_p2
 ror_set                     ; set carry cause bit was 1 (if)
     sec
@@ -943,14 +962,14 @@ rol_loop
     lda     $1c50,X            ; 1c50 is char 5 (clouds)
     and     #%10000000      ; bit mask testing for last bit of the byte
     bne     rol_set         ; if zero flag is 0, need to set carry, else fall through
-    clc                     ; clear carry cause bit was 0 (else)   
+    clc                     ; clear carry cause bit was 0 (else)
     jmp     rol_p2
 rol_set                     ; set carry cause bit was 1 (if)
     sec
 
 rol_p2
     rol     $1c50,X
-    inx     
+    inx
     cpx     #16
     bne     rol_loop
     rts
@@ -1038,6 +1057,18 @@ draw_ladder_test
     sta     MAP,X
     rts
 
+test_code ;[test purpose code,need to be removed at the end
+        ; init sad guys (for testing)
+    lda     #3
+    ldx     #101
+    sta     MAP,X
+    ldx     #142
+    sta     MAP,X
+    ldx     #208
+    sta     MAP,X
+    ldx     #82
+    sta     MAP,X
+    rts
 
 scroll_one_col_with_scroll_flag
     ldx     X_POS           ; load X_POS into X_reg (this sets the negative flag if it was negative!)
@@ -1204,7 +1235,7 @@ audio_update        ;; call this at the end of every frame to update audio
     STA     AU_HI ; POKE 36878 15 (from book)
     beq     audio_update_done ; if it is 0, then no sounds are playing, so we do not need to do anything
     ; else!
-    ; eor     #%00000001  ; check for 
+    ; eor     #%00000001  ; check for
 
 audio_update_done
     rts
@@ -1544,7 +1575,7 @@ map1
     dc.b    #%00110100
     dc.b    #%00101000
     dc.b    #%01000100
-    
+
     ;       Char 16 player running left 2
     dc.b    #%00111100
     dc.b    #%11111100
@@ -1561,4 +1592,4 @@ map1
     dc.b    #%00010100
     dc.b    #%00101100
     dc.b    #%00101000
-    dc.b    #%01000100    
+    dc.b    #%01000100
