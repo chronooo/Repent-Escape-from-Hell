@@ -36,51 +36,44 @@ TMP_COL =    $1afc   ; where column is loaded when map array is read
     org     $1001
     dc.w    stubend
     dc.w    12345
-    dc.b    $9e, "4109", 0 
+    dc.b    $9e, "4109", 0
 stubend
     dc.w    0
 ; --------- Code for Compressed Title before adjusting resolution ------------
 ; Custom compression. modified RLE scheme to not store the first and last blocks of spaces.
-; This allows us to have a writable region of less than a byte, which gets rid of a lot of unnecessary 
+; This allows us to have a writable region of less than a byte, which gets rid of a lot of unnecessary
 ; duplicate code we had to account for the screen memory space spanning more than a byte.
-; this scheme, however, needs a white screen fill before the decompression takes place, but in the end it ends up being more efficient. 
-title 
+; this scheme, however, needs a white screen fill before the decompression takes place, but in the end it ends up being more efficient.
+title
     jsr     title_screen_init
+    ;entering paras for screen decode of drawing top half
+    ;para 1 character set address
+    lda     #$45
+    sta     $0
+    lda     #$10
+    sta     $1
+    ;para 2 start location
+    lda     #$60
+    sta     $02
+    lda     #$1e
+    sta     $03
+    jsr     screen_decode
 
+    ;entering paras for screen decode of drawing top half
+    ;para 1 character set address
+    lda     #$4d
+    sta     $0
+    lda     #$10
+    sta     $1
+    ;para 2 start location
+    lda     #$86
+    sta     $02
+    lda     #$1e
+    sta     $03
+    jsr     screen_decode
+
+    jsr     screen_draw_press_Z
 ; decode the screen data and put it into screen memory
-rle_decode
-    ldx     #0              ; store 0 in x, use it as index for Read loop
-    ldy     #0              ; use Y as counter for the write loop
-    stx     $25             ; store x into zp location for later
-    pha                     ; push something because first line is pull from stack
-decode_loop
-    pla
-    ldx     $25             ; load x into zp location for later
-    lda     data_label,X         ; lda will turn zero flag on if it loaded zero (termination)
-    beq     wait_for_z            ; if reached termination, exit
-    pha                     ; A to stack
-    cmp     #$20             ; Check if is a continuous space
-    bne     case_not_space  ;
-case_continuous_space       ;if so, then load the number of space
-    inx     ; x++
-    lda     data_label,X         ; get the loop amount in A
-    jmp     number_of_times
-case_not_space
-    lda     #1  ;      Case 1 time only.
-number_of_times
-    inx     ; increment X in anticipation of next loop
-    stx     $25             ; store x into zp location for later
-    tax     ; how many time to repeat char into X
-
-write_rle
-    cpx     #0  ; is loop done?
-    beq     decode_loop      ; if it is, decode another char
-    pla     ; bring value of character back into A
-    sta     $1e60,Y          ; store char value at Y
-    pha     ; store A back
-    dex     ; decrement the amount of char repeats left
-    iny     ; inc the screen mem address
-    jmp     write_rle
 
 wait_for_z
     lda     CURKEY ;test current key
@@ -91,44 +84,28 @@ wait_for_z
 start_prg
     jmp     start
 
-title_screen_init
-
-    lda     #$02
-    ldx     #0
-color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
-    sta     $9600,X
-    inx
-    bne     color_ram1
-
-    lda     #$00    ; don't need to load x cause it is 0 now. x just wrapped around.
-color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
-    sta     $9700,X
-    inx
-    bne     color_ram2
-
-    lda     #32     ; same thing with X here.
-titlewhitescreen
-    sta     $1e00,X
-    inx     
-    bne     titlewhitescreen
-
-    lda     #32     ; same thing with X here.
-titlewhitescreen2
-    sta     $1f00,X
-    inx     
-    bne     titlewhitescreen2
-
-    rts
-
-data_label
-    HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 03 01 
-    HEX 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA 10 12 
-    HEX 05 13 13 60 1A 00 
+data_label_title_top_half
+    ;29=16+13;
+    ;Repent:
+    ;AN ESCAPE FROM HELL
+data_label_REPENT
+    HEX	12 05 10 05 0E 14 3A 00
+data_label_AN_ESCAPE_FROM_HELL
+    HEX 01 0E 60 05 13 03 01 10 05 60 06 12 0F 0D 60 08 05 0C 0C 00
+data_label_game_win_top_half
+    ;11;GAME CLEAR
+    HEX	07 01 0D 05 60 03 0C 05 01 12 00
+data_label_game_over_top_half
+    ;10;GAME OVER
+    HEX	07 01 0D 05 60 0F 16 05 12 00
+data_label_title_bottom_half
+    ;8;PRESS Z
+    HEX	10 12 05 13 13 60 1A 00
 ; ----------------- Code for Title ends -----------------------------
 
 start
-    lda     #0 
-    ldx     #0 
+    lda     #0
+    ldx     #0
     ldy     #0
     sta     ANIMCOUNTER ; Set the 2 frame anim counter to 0 in ZP
     sta     MOVCOUNTER
@@ -140,34 +117,39 @@ start
     lda     #1          ; selecting char 1
     ldx     #3          ; loop counter
 draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
-    sta     $1beb,X     
-    inx     
-    cpx     #21    ; 
+    sta     $1beb,X
+    inx
+    cpx     #21    ;
     bne     draw_ground
 
    ;   loop to set the bottom row of the characters to character 00001, written to map array
     lda     #5          ; selecting char 1
     ldx     #0          ; loop counter
 add_clouds              ; puts clouds in chars 0 to 21
-    sta     MAP,X     
-    inx     
-    cpx     #21    ; 
-    bne     add_clouds 
+    sta     MAP,X
+    inx
+    cpx     #21    ;
+    bne     add_clouds
 
     ; init sad guys (for testing)
     lda     #3
     ldx     #101
-    sta     MAP,X     
+    sta     MAP,X
     ldx     #142
-    sta     MAP,X     
+    sta     MAP,X
     ldx     #208
-    sta     MAP,X     
+    sta     MAP,X
     ldx     #82
-    sta     MAP,X     
+    sta     MAP,X
 ;test: draw ladders
     jsr     draw_ladder_test
 
 loop
+check_alive
+    jsr     load_life
+    cmp     #$0
+    bne     refresh_life_count     ;last life lost result in game over.
+    jmp     game_over
 refresh_life_count
     ldx     #21
     lda     #0
@@ -214,7 +196,9 @@ get_input
 ;-----
     lda     CURKEY       ; loads the current pressed key from memory
     cmp     #10         ; if R is pressed, restart whole program
-    beq     start
+    bne     input_check_next_key_than_R
+    jmp     start
+input_check_next_key_than_R
     cmp     #50         ; T for Test purpose [test code]
     beq     test_entry
     cmp     #35         ; B for entering god modes swtich
@@ -378,22 +362,8 @@ falling_skip
 event_object_handling
 event_object_inrease_life
     cmp     #9 ;heart
-    bne     event_object_step_on_scroll_switch
-    jsr     event_life_increase_life
-event_object_step_on_scroll_switch
-    cmp     #17
-    bne     event_object_step_on_lever_floor_fill
-    dec     SCROLLING_FLAG      ;; start scrolling
-event_object_step_on_lever_floor_fill
-    cmp     #19
-    bne     event_object_step_on_portal_teleport
-    jsr     event_handle_floor_fill      ;; start scrolling
-event_object_step_on_portal_teleport
-    cmp     #18
     bne     event_object_handling_done
-    jsr     teleport      ;; start scrolling
-    jmp     draw_player_end
-
+    jsr     event_life_increase_life
 ;next object event
 event_object_handling_done
     ;check existed element on map bttof the target cell
@@ -531,7 +501,6 @@ idle_frame_3
     jmp     update_next_frame_player
 
 update_next_frame_player
-
     sta     MAP,X             ; store it at the player's position
 
 life_status_update
@@ -675,7 +644,7 @@ proj_gone
     jmp     post_proj_update    ; go back to loop .
 
 
-draw_player_end
+
     jsr     player_pos_to_tmp   ; store player position into the temporary positions
     jsr     coord_to_index      ; get index into map array inside X_reg
     lda     #2
@@ -815,12 +784,6 @@ check_legal_move_horizontal_chceck
     beq     check_legal_move_true
     cmp     #9     ; is heart
     beq     check_legal_move_true
-    cmp     #17     ; is switch for scroll
-    beq     check_legal_move_true
-    cmp     #19     ; is lever
-    beq     check_legal_move_true
-    cmp     #18     ; ii portal
-    beq     check_legal_move_true
     jmp     check_legal_move_false
 check_legal_move_down
     inc     Y_TMP   ;check one below
@@ -833,15 +796,6 @@ check_legal_move_vertical_check
     beq     check_legal_move_true
     cmp     #7      ;is a ladder connector? []
     beq     check_legal_move_true
-    cmp     #9     ; is heart
-    beq     check_legal_move_true
-    cmp     #17     ; is switch for scroll
-    beq     check_legal_move_true
-    cmp     #19     ; is lever
-    beq     check_legal_move_true
-    cmp     #18     ; ii portal
-    beq     check_legal_move_true
-
 check_legal_move_false
     ldy     #$0
     rts
@@ -867,20 +821,90 @@ event_life_lose_life
     cmp     #%10000000
     beq     event_life_lose_life_skip
     jsr     load_life
-    cmp     #$1
-    beq     event_game_over     ;last life lost result in game over.
     tay
     dey
     jsr     set_life
 event_life_lose_life_skip
     rts
 ;---
-; function for displaying game over, still under construction
+; function for displaying game over
 ;---
 
+game_over
+    jsr     reset_screen_paras
+    jsr     title_screen_init
 
-event_game_over
-    jmp     start
+    ;entering paras for screen decode of drawing top half
+    ;para 1 character set address
+    lda     #$6c
+    sta     $0
+    lda     #$10
+    sta     $1
+    ;para 2 start location
+    lda     #$75
+    sta     $02
+    lda     #$1e
+    sta     $03
+    jsr     screen_decode
+
+    jsr     screen_draw_press_Z
+
+game_over_wait_for_z
+    lda     CURKEY ;test current key
+    cmp     #33 ; Z in current key table
+    beq     game_over_wait_for_z_end
+    jmp     game_over_wait_for_z
+game_over_wait_for_z_end
+    jsr     title_screen_init
+    rts
+;---
+; function for displaying game clear
+;---
+
+game_clear
+    jsr     reset_screen_paras
+    jsr     title_screen_init
+
+    ;entering paras for screen decode of drawing top half
+    ;para 1 character set address
+    lda     #$61
+    sta     $0
+    lda     #$10
+    sta     $1
+    ;para 2 start location
+    lda     #$74
+    sta     $02
+    lda     #$1e
+    sta     $03
+    jsr     screen_decode
+
+    jsr     screen_draw_press_Z
+
+game_clear_wait_for_z
+    lda     CURKEY ;test current key
+    cmp     #33 ; Z in current key table
+    beq     game_over_wait_for_z_end
+    jmp     game_over_wait_for_z
+game_clear_wait_for_z_end
+    jsr     title_screen_init
+    rts
+
+reset_screen_paras
+    lda     $9002
+    and     #%10000000
+    ora     #22
+    sta     $9002
+
+    lda     $9003
+    and     #%10000000
+    ora     #46
+    sta     $9003
+
+    lda     $9005 ; POKE 36869 255 (from book)
+    and     #$f0
+    sta     $9005
+
+    rts
 
 ;---
 ; load life to accmulator
@@ -909,16 +933,64 @@ set_life
     sta     STATUS
     rts
 
-teleport
 
-    lda     #2
-    sta     X_POS
-    lda     #4
-    sta     Y_POS
+title_screen_init
+    lda     #$02
+    ldx     #0
+color_ram1 ; fill color ram 0x9600 to 0x96ff with red (02)
+    sta     $9600,X
+    inx
+    bne     color_ram1
+
+    lda     #$00    ; don't need to load x cause it is 0 now. x just wrapped around.
+color_ram2 ; fill color ram 0x9700 to 0x97ff with black (00)
+    sta     $9700,X
+    inx
+    bne     color_ram2
+
+    lda     #32     ; same thing with X here.
+titlewhitescreen
+    sta     $1e00,X
+    inx
+    bne     titlewhitescreen
+
+    lda     #32     ; same thing with X here.
+titlewhitescreen2
+    sta     $1f00,X
+    inx
+    bne     titlewhitescreen2
+
+    rts
 
 
+screen_draw_press_Z;
+    lda     #$76
+    sta     $0
+    lda     #$10
+    sta     $1
+    lda     #$52
+    sta     $02
+    lda     #$1f
+    sta     $03
+    jsr     screen_decode
+    rts
 
-
+   ;decode the screen using 3 bytes of ZP
+;   [$1,$0] first char location in small endian
+;   [$03,$02] address of the data map
+;   $4 is backup and restore Y
+screen_decode
+; decode the screen data and put it into screen memory
+rle_decode
+    ldy     #0              ; use Y as counter for the write loop
+decode_loop
+    lda     ($0),Y         ; lda will turn zero flag on if it loaded zero (termination)
+    cmp     #0
+    beq     screen_decode_done
+    sta     ($2),Y          ; store char value at Y
+    iny     ; inc the screen mem address
+    jmp     decode_loop
+screen_decode_done
     rts
 
 ;***********************************
@@ -928,8 +1000,8 @@ init            ; call routine in the beginning.
 
     ; change the lda instructions for the map to start of map, in case we modified it before
     lda     #$16
-    sta     read_col_loop+2     
-    sta     read_col_loop+17   
+    sta     read_col_loop+2
+    sta     read_col_loop+17
 
     ; setting audio speakers volume
     lda     #15
@@ -1042,31 +1114,68 @@ draw_ladder_test
     lda     #10
     sta     Y_TMP
     jsr     coord_to_index
-
-    ldy     #0
-draw_ladder_test_ladder
     lda     #6 ;ladder
     sta     MAP,X
     dec     Y_TMP
     jsr     coord_to_index
-    iny
-    cpy     #6
-    bne     draw_ladder_test_ladder
-
-draw_ladder_test_ladder_connector
+    lda     #6 ;ladder
+    sta     MAP,X
+    dec     Y_TMP
+    jsr     coord_to_index
+    lda     #6 ;ladder
+    sta     MAP,X
+    dec     Y_TMP
+    jsr     coord_to_index
+    lda     #6
+    sta     MAP,X
+    dec     Y_TMP
+    jsr     coord_to_index
+    lda     #6
+    sta     MAP,X
+    dec     Y_TMP
+    jsr     coord_to_index
+    lda     #6
+    sta     MAP,X
+    dec     Y_TMP
     jsr     coord_to_index
     lda     #7  ;connector
     sta     MAP,X
-
-    ldy     #0
-draw_ladder_test_ground
     dec     X_TMP
     jsr     coord_to_index
     lda     #1 ;ground
     sta     MAP,X
-    iny
-    cpy     #7
-    bne     draw_ladder_test_ground
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
+    dec     X_TMP
+    jsr     coord_to_index
+    lda     #1 ;ground
+    sta     MAP,X
     lda     #12
     sta     X_TMP
     lda     #10
@@ -1120,7 +1229,7 @@ col_blank_fill
     iny
     cpy     #8
     bne     col_blank_fill
-    ldx     MAP_READ_PTR ; load current column array index into X_reg 
+    ldx     MAP_READ_PTR ; load current column array index into X_reg
 read_col_loop
     lda     map1,X     ; read from map storage at index X_reg
     beq     read_col_done         ; end of column flag
@@ -1129,14 +1238,14 @@ read_col_loop
     ; else, check what we just loaded and put it in correct location.
     lsr
     lsr     ; DIVIDE BY 32 ! HAHA!  (only takes 5 bytes)
-    lsr     ; since y value is stored in bits 765, we need to put it 
+    lsr     ; since y value is stored in bits 765, we need to put it
     lsr     ; in bits 210 so that we can use it as an INDEX!!
     lsr
     tay     ; store that in Y
     lda     map1,X     ; read same thing into A again
     and     #%00011111  ; bit mask out the 765 bits (we don't need them anymore)
     sta     TMP_COL,Y   ; store the char value at Y that we just Read
-    inx     
+    inx
     beq     increment_map_origin ; if inx set zero flag, means we wrapped around – need to go to next "page" of the map..
     jmp     read_col_loop
 read_col_done
@@ -1144,11 +1253,11 @@ read_col_done
     stx     MAP_READ_PTR
     rts ; return from routine
 
-increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1, 
+increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1,
                             ; skipping the address referenced by the code forward by 256 bytes.
                             ; oh god self modifying code
-    inc     read_col_loop+2     
-    inc     read_col_loop+17   
+    inc     read_col_loop+2
+    inc     read_col_loop+17
     jmp     read_col_loop
 
 
@@ -1159,30 +1268,30 @@ write_col_to_x_on_screen        ; Routine to write the column read from map enco
                                 ;         X_reg - the value on screen to write the temp column to.
                                 ; Output: none
                                 ; Modifies: A_reg, Y_reg, X_reg
-    ldy     #0 
-    ; tax     
+    ldy     #0
+    ; tax
     ; clc                         ; clear carry before add. adding 63 (3x21) to it
     ; adc     #63                 ; now X_reg holds the index of where first tile should Go
     ldx     #104
 write_col_loop
     lda     TMP_COL,Y
     sta     MAP,X
-    txa     
+    txa
     clc                         ; clear carry before add.
     adc     #21                 ; add 21 to go to next line !!!!
     tax
     iny                         ; y++
     cpy     #8                  ; if 8 POG!!! get out of function we are done
     beq     write_col_done      ; get out rts
-    jmp     write_col_loop      ; 
+    jmp     write_col_loop      ;
 write_col_done
     rts
 
-scroll_one_column               ; Routine to move all columns to the left by 1, 
+scroll_one_column               ; Routine to move all columns to the left by 1,
                                 ; destroy the leftmost column, and insert a column on the left.
-                                ;         
+                                ;
                                 ; Input:  none
-                                ;        
+                                ;
                                 ; Output: none
                                 ; Modifies: A_reg, Y_reg, X_reg
 
@@ -1194,24 +1303,24 @@ scroll_one_col_shift_loop ; this loop applies MAP[X] = MAP[X + 1] (C syntax)
     lda     MAP,X   ; load teh tile in front of us into A_reg
     dex             ; put X_reg back to current tile index
     sta     MAP,X   ; store it
-    inx             ; increase X for next iteration 
+    inx             ; increase X for next iteration
     cpx     #251    ; if we are at last tile, fall through. else, jump back up.
     bne     scroll_one_col_shift_loop
-    
+
     dec     X_POS
     lda     X_POS           ; load X_POS into A_reg (this sets the negative flag if it was negative!)
     bmi     neg_x_scroll_func          ; branch if X_POS is negative, i.e X_POS = FF because we just did X_POS = 0 - 1
     jmp     x_notneg
 neg_x_scroll_func
     inc     X_POS           ; no jmp here, just fall through.
-x_notneg    
+x_notneg
 
     jsr     read_column         ; read a column and place it into TMP_COL[8] array
     jsr     write_col_to_x_on_screen    ; put new column into rightmost column......... lets hope it works.........
     rts
 
 
-
+;******************************************************************************
 ; audio routines
 ; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
 audio_noise ; activate the audio playback for noise oscilator
@@ -1269,83 +1378,64 @@ audio_update        ;; call this at the end of every frame to update audio
 audio_update_done
     rts
 
-event_handle_floor_fill
-    tay
-    txa
-    clc
-    adc     #85
-    tax
-    lda     #1
-    sta     MAP,X
-    inx
-    sta     MAP,X
-    inx
-    sta     MAP,X
-    inx
-    sta     MAP,X
-    inx
-    sta     MAP,X
-    txa
-    sec
-    sbc     #89
-    tax
-    tya
-    rts
-
-
-
-
-
-
 /*
 ;   END OF CODE, START OF DATA
 */
 
 
 ; MAP 1 ENCODING:
-map1           ;   Total map size: 425 Bytes
-    HEX 00 06 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00
-    HEX 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21
-    HEX d2 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21
-    HEX e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 06 e1 ;   Bytes: 64
+map1
+    HEX 00 d1 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66
+    HEX 86 a1 e1 00 53 61 00 51 61 00 52 61 e1 00 83 a1
+    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 b1
+    HEX c3 e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 ;   Bytes: 64
 
-    HEX 00 06 e1 00 06 e1 00 06 d2 e1 00 06 e1 00 06 e1
+    HEX a1 e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00
+    HEX 03 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26
+    HEX 46 00 41 e1 00 23 41 e1 00 23 41 e1 00 46 66 00
+    HEX 61 a1 e1 00 43 61 a1 e1 00 43 61 a1 e1 00 61 a1 ;   Bytes: 128
+
+    HEX e1 00 86 a6 c6 e1 00 e1 00 c3 e1 00 c3 e1 00 c3
+    HEX e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 a1
+    HEX e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 e1
+    HEX 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 e1 ;   Bytes: 192
+
+    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 00
+    HEX 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 e1
+    HEX 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 46
+    HEX 66 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 ;   Bytes: 256
+
     HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
     HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06
-    HEX e1 00 06 e1 00 e1 00 a6 c6 e1 00 91 a1 e1 00 83 ;   Bytes: 128
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 ;   Bytes: 320
 
-    HEX a1 e1 00 66 86 a1 e1 00 61 00 53 61 00 61 e1 00
-    HEX 00 00 00 83 a1 e1 00 83 a1 e1 00 e1 00 e1 00 e1
-    HEX 00 c3 e1 00 b1 c3 e1 00 e1 00 e1 00 e1 00 a6 c6
-    HEX e1 00 a1 e1 00 a1 e1 00 a1 e1 00 26 46 66 86 a1 ;   Bytes: 192
-
-    HEX e1 00 21 e1 00 03 21 e1 00 21 e1 00 03 21 e1 00
-    HEX 03 21 e1 00 26 46 00 41 e1 00 23 41 e1 00 23 41
-    HEX e1 00 46 66 00 61 a1 e1 00 43 61 a1 e1 00 43 61
-    HEX a1 e1 00 61 a1 e1 00 86 a6 c6 e1 00 e1 00 c3 e1 ;   Bytes: 256
-
-    HEX 00 c3 e1 00 c3 e1 00 a6 c6 e1 00 a1 e1 00 83 a1
-    HEX e1 00 66 86 a1 e1 00 61 00 61 00 61 e1 00 83 a1
-    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3
-    HEX e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 ;   Bytes: 320
-
-    HEX e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 03
-    HEX 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 46
-    HEX 00 41 e1 00 46 66 00 06 e1 00 06 e1 00 06 e1 00
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
     HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 ;   Bytes: 384
 
     HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
-                                                    ;   Total map size: 430 Bytes
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
+                                                        ;   Total map size: 412 Bytes
+;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86
+;     HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1
+;     HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00
+;     HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1
+;     HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21
+;     HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00
+;     HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 e1 00 43 61
+;     HEX e1 00 43 61 e1 00 61 e1 00 86 a6 c6 e1 00 e1 00
+;     HEX c3 e1 00 c3 e1 00 c3 e1 FF
+
 
     ; map array. in case we want to have something there at game start,
     ; put that here (probably will not use, because then we cannot replay the game)
-    org     MAP          
+    org     MAP
 ;   in this array, each entry with bits %76543210:
 
 ;   bits 43210 represent the character that is displayed in the custom character set.
-;   Since our character set starts at 0x1C00 and screen memory begins at 0x1E00, we have 
+;   Since our character set starts at 0x1C00 and screen memory begins at 0x1E00, we have
 ;   32 characters to choose from. bits 43210 represent a number x from 0 to 31 such that
 ;   %76543210 will display character at address 0x1c00 + 16x.
 
@@ -1353,9 +1443,12 @@ map1           ;   Total map size: 425 Bytes
 ;   possible additional information to store: projectile movement timer, enemy attack timer, enemy movement timer,
 ;   tough enemy's health points, etc...
 
+    ; title screen data
+    ; total: 58
+
 ; CHAR DATA -------------------
     org     $1c00
-    
+
     ;       CHAR 00 - whitespace
     dc.b    #%00000000
     dc.b    #%00000000
@@ -1375,10 +1468,10 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%00000000
 
     ;       CHAR 01 - ground tile
-    dc.b    #%11111101    
+    dc.b    #%11111101
     dc.b    #%11011010
     dc.b    #%10010111
-    dc.b    #%11011101 
+    dc.b    #%11011101
     dc.b    #%10111111
     dc.b    #%11000011
     dc.b    #%00000000
@@ -1428,7 +1521,7 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%11111111
     dc.b    #%11111111
 
-    ;       CHAR 04 - projectile placeholder 
+    ;       CHAR 04 - projectile placeholder
     dc.b    #%00000000
     dc.b    #%01110000
     dc.b    #%01111000
@@ -1447,7 +1540,7 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%00000000
 
 
-    ;       CHAR 05 - "cloud" 
+    ;       CHAR 05 - "cloud"
 
     dc.b    #%00000000
     dc.b    #%00000000
@@ -1483,13 +1576,13 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%11000011
     dc.b    #%11111111
     dc.b    #%11111111
-    
+
     ;      CHAR 07 -'ladder ground connector'
 
-    dc.b    #%11111101    
+    dc.b    #%11111101
     dc.b    #%11011010
     dc.b    #%10010111
-    dc.b    #%11011101 
+    dc.b    #%11011101
     dc.b    #%10111111
     dc.b    #%11000011
     dc.b    #%11000011
@@ -1503,7 +1596,7 @@ map1           ;   Total map size: 425 Bytes
     dc.b    #%11000011
     dc.b    #%11111111
 
-    
+
     ;       CHAR 08 a man over a ladder
     dc.b    #%11111111
     dc.b    #%11111111
