@@ -138,7 +138,7 @@ start
 
 ;   loop to set the bottom row of the characters to character 00001, written to map array
     lda     #1          ; selecting char 1
-    ldx     #0          ; loop counter
+    ldx     #3          ; loop counter
 draw_ground             ; fills the bottom row (0x1bff - 21) with "ground" character (01 right now)
     sta     $1beb,X     
     inx     
@@ -351,10 +351,19 @@ falling_counting
     inc     STATUS  ;if not, increase timer by 1
     jmp     falling_skip
 falling_falls
-    inc     Y_POS
     lda     STATUS
     and     #%11111000 ;reset the timer back to 000
     sta     STATUS
+    inc     Y_POS
+    lda     Y_POS
+    cmp     #11     ; check if it reach the border of the screen
+    ;if so, they player is in a hole, respawn it at top left.
+    bne     falling_falls_normal
+    jsr     event_life_lose_life
+    lda     #2
+    sta     X_POS
+    sta     Y_POS
+falling_falls_normal
 falling_skip
     ; update player pos on map depending on the x, y stored in zero page:
     jsr     player_pos_to_tmp   ; put players coords into X_TMP, Y_TMP ZP vars
@@ -877,8 +886,8 @@ init            ; call routine in the beginning.
 
     ; change the lda instructions for the map to start of map, in case we modified it before
     lda     #$16
-    sta     read_col_loop+2     
-    sta     read_col_loop+17   
+    sta     read_col_loop+2
+    sta     read_col_loop+17
 
     ; setting audio speakers volume
     lda     #15
@@ -1130,11 +1139,11 @@ read_col_done
     stx     MAP_READ_PTR
     rts ; return from routine
 
-increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1, 
+increment_map_origin        ; change the address of the lda  for the map to read from. increase the high order byte by 1,
                             ; skipping the address referenced by the code forward by 256 bytes.
                             ; oh god self modifying code
-    inc     read_col_loop+2     
-    inc     read_col_loop+17   
+    inc     read_col_loop+2
+    inc     read_col_loop+17
     jmp     read_col_loop
 
 
@@ -1197,7 +1206,7 @@ x_notneg
     rts
 
 
-
+;******************************************************************************
 ; audio routines
 ; AUDIO_FLAG ZP – bit 0 for blip, bit 1 for noise
 audio_noise ; activate the audio playback for noise oscilator
@@ -1262,37 +1271,37 @@ audio_update_done
 
 ; MAP 1 ENCODING:
 map1          
-    HEX 00 d1 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 
-    HEX 86 a1 e1 00 53 61 00 51 61 00 52 61 e1 00 83 a1 
-    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 b1 
+    HEX 00 d1 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66
+    HEX 86 a1 e1 00 53 61 00 51 61 00 52 61 e1 00 83 a1
+    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 b1
     HEX c3 e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 ;   Bytes: 64
 
-    HEX a1 e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 
-    HEX 03 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 
-    HEX 46 00 41 e1 00 23 41 e1 00 23 41 e1 00 46 66 00 
+    HEX a1 e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00
+    HEX 03 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26
+    HEX 46 00 41 e1 00 23 41 e1 00 23 41 e1 00 46 66 00
     HEX 61 a1 e1 00 43 61 a1 e1 00 43 61 a1 e1 00 61 a1 ;   Bytes: 128
 
-    HEX e1 00 86 a6 c6 e1 00 e1 00 c3 e1 00 c3 e1 00 c3 
-    HEX e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 a1 
-    HEX e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 e1 
+    HEX e1 00 86 a6 c6 e1 00 e1 00 c3 e1 00 c3 e1 00 c3
+    HEX e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 a1
+    HEX e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 e1
     HEX 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 e1 ;   Bytes: 192
 
-    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 00 
-    HEX 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 e1 
-    HEX 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 46 
+    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 00
+    HEX 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 e1
+    HEX 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 46
     HEX 66 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 ;   Bytes: 256
 
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
     HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 ;   Bytes: 320
 
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00
     HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 ;   Bytes: 384
 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
+    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1
     HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
                                                         ;   Total map size: 412 Bytes
 ;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
@@ -1631,7 +1640,7 @@ map1
     dc.b    #%00010100
     dc.b    #%00101100
     dc.b    #%00101000
-    dc.b    #%01000100    
+    dc.b    #%01000100
 
     ;       Char 17 scroll button
     dc.b    #%00000000
