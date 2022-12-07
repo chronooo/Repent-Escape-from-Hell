@@ -17,6 +17,7 @@ C_COL           =   $30     ; current column variable (which column are we on?)
 MAP_READ_PTR    =   $31     ; current map storage pointer. the one we read new cols from.
 SCROLLING_FLAG  =   $32     ; 0 if we are scrolling (skip over input, scroll by 1 bar) 1 if we are not scrolling.
 AUDIO_TIMER     =   $33     ; audio flag to keep track of the audio playback.
+WIN_FLAG        =   $34         ; win or lose
 
 
 ; MAP_READ_PTR    =    $31     ; current map storage pointer. the one we read new cols from.
@@ -44,6 +45,8 @@ stubend
 ; This allows us to have a writable region of less than a byte, which gets rid of a lot of unnecessary 
 ; duplicate code we had to account for the screen memory space spanning more than a byte.
 ; this scheme, however, needs a white screen fill before the decompression takes place, but in the end it ends up being more efficient. 
+    ldx     #0
+    stx     WIN_FLAG
 title 
     jsr     title_screen_init
 
@@ -124,6 +127,12 @@ data_label
     HEX 12 05 10 05 0E 14 3A 20 1E 01 0E 60 05 13 03 01 
     HEX 10 05 60 06 12 0F 0D 60 08 05 0C 0C 20 BA 10 12 
     HEX 05 13 13 60 1A 00 
+
+data_label_win
+; VICTORY!
+    HEX 16 09 03 14 0F 12 19 21 20 1F 20 CB 10 12 
+    HEX 05 13 13 60 1A 00 
+
 ; ----------------- Code for Title ends -----------------------------
 
 start
@@ -135,6 +144,8 @@ start
                         ; This is how we keep track of whether to use frame 1 or 2
                         ; For our movement animations
     jsr     init
+
+
 
 
 loop
@@ -229,8 +240,7 @@ j_shoot
 label_j
     jmp     update_next_frame   ; leave
 p_scroll
-    dec     SCROLLING_FLAG      ; set scrolling flag to 0 (start scrolling)
-    jmp     update_next_frame
+    jmp     event_victory
 a_left
     ldy     #$0                 ;check move left flag
     jsr     check_legal_move
@@ -274,6 +284,7 @@ others
     jmp     update_next_frame   ;other cannot move cases
 
 key_pressed
+
     ;   need to fixup the x and y values in case we went out of bounds:
     ;   we do NOT need to check both x and y for out of bounds,
     ;   since we know only one case can be satisfied at a time. (we only check one keypress per loop)
@@ -328,6 +339,7 @@ falling_counting
     beq     falling_falls ;fall player if timer reach
     inc     STATUS  ;if not, increase timer by 1
     jmp     falling_skip
+    
 falling_falls
     lda     STATUS
     and     #%11111001 ;reset the timer back to 000
@@ -863,6 +875,7 @@ event_life_lose_life
     tay
     dey
     jsr     set_life
+    
 event_life_lose_life_skip
     rts
 ;---
@@ -871,7 +884,54 @@ event_life_lose_life_skip
 
 
 event_game_over
-    jmp     start
+    lda     WIN_FLAG
+    beq     event_game_over_no_prev_win
+
+    lda     decode_loop+4
+    sec     
+    sbc     #$26
+    sta     decode_loop+4
+    lda     decode_loop+15
+    sec     
+    sbc     #$26
+    sta     decode_loop+15
+    dec     WIN_FLAG
+
+event_game_over_no_prev_win
+
+    lda     #$96
+    sta     $9002
+    lda     #$ae
+    sta     $9003
+    lda     #$f0
+    sta     $9005
+    jmp     title
+
+event_victory
+    lda     WIN_FLAG
+    bne     event_victory_won_before
+
+    lda     decode_loop+4
+    clc     
+    adc     #$26
+    sta     decode_loop+4
+    lda     decode_loop+15
+    clc     
+    adc     #$26
+    sta     decode_loop+15
+    inc     WIN_FLAG
+
+event_victory_won_before
+    lda     #$96
+    sta     $9002
+    lda     #$ae
+    sta     $9003
+    lda     #$f0
+    sta     $9005
+            ;decode_loop +4 low byte +5 high byte
+
+    jmp     title
+
 
 ;---
 ; load life to accmulator
@@ -921,6 +981,9 @@ init            ; call routine in the beginning.
     lda     #$16
     sta     read_col_loop+2     
     sta     read_col_loop+17   
+    ; revert the over self modifying
+    ; jsr     revert_data_label_addr
+
 
     ; setting audio speakers volume
     lda     #15
@@ -1346,6 +1409,7 @@ map1           ;   Total map size: 425 Bytes
     HEX 00 c6 e1 00 e1 00 e1 00 FF
                                                     ;   Total map size: 392 Bytes
                                                     ;   Total map size: 391 Bytes
+
 
     ; map array. in case we want to have something there at game start,
     ; put that here (probably will not use, because then we cannot replay the game)
