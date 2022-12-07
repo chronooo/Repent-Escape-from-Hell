@@ -369,8 +369,22 @@ falling_skip
 event_object_handling
 event_object_inrease_life
     cmp     #9 ;heart
-    bne     event_object_handling_done
+    bne     event_object_step_on_scroll_switch
     jsr     event_life_increase_life
+event_object_step_on_scroll_switch
+    cmp     #17 
+    bne     event_object_step_on_lever_floor_fill
+    dec     SCROLLING_FLAG      ;; start scrolling
+event_object_step_on_lever_floor_fill
+    cmp     #19 
+    bne     event_object_step_on_portal_teleport
+    jsr     event_handle_floor_fill      ;; start scrolling
+event_object_step_on_portal_teleport
+    cmp     #18 
+    bne     event_object_handling_done
+    jsr     teleport      ;; start scrolling
+    jmp     draw_player_end
+
 ;next object event
 event_object_handling_done
     ;check existed element on map bttof the target cell
@@ -508,6 +522,7 @@ idle_frame_3
     jmp     update_next_frame_player
 
 update_next_frame_player
+
     sta     MAP,X             ; store it at the player's position
 
 life_status_update
@@ -651,7 +666,7 @@ proj_gone
     jmp     post_proj_update    ; go back to loop .
 
 
-
+draw_player_end
     jsr     player_pos_to_tmp   ; store player position into the temporary positions
     jsr     coord_to_index      ; get index into map array inside X_reg
     lda     #2
@@ -791,6 +806,12 @@ check_legal_move_horizontal_chceck
     beq     check_legal_move_true
     cmp     #9     ; is heart
     beq     check_legal_move_true
+    cmp     #17     ; is switch for scroll
+    beq     check_legal_move_true
+    cmp     #19     ; is lever
+    beq     check_legal_move_true
+    cmp     #18     ; ii portal
+    beq     check_legal_move_true
     jmp     check_legal_move_false
 check_legal_move_down
     inc     Y_TMP   ;check one below
@@ -803,6 +824,15 @@ check_legal_move_vertical_check
     beq     check_legal_move_true
     cmp     #7      ;is a ladder connector? []
     beq     check_legal_move_true
+    cmp     #9     ; is heart
+    beq     check_legal_move_true
+    cmp     #17     ; is switch for scroll
+    beq     check_legal_move_true
+    cmp     #19     ; is lever
+    beq     check_legal_move_true
+    cmp     #18     ; ii portal
+    beq     check_legal_move_true
+
 check_legal_move_false
     ldy     #$0
     rts
@@ -868,6 +898,18 @@ set_life
     and     #%11100111
     ora     $0
     sta     STATUS
+    rts
+
+teleport
+
+    lda     #2
+    sta     X_POS
+    lda     #4
+    sta     Y_POS
+
+
+
+    
     rts
 
 ;***********************************
@@ -1255,56 +1297,75 @@ audio_update        ;; call this at the end of every frame to update audio
 audio_update_done
     rts
 
+event_handle_floor_fill
+    tay
+    txa
+    clc
+    adc     #85
+    tax 
+    lda     #1
+    sta     MAP,X
+    inx     
+    sta     MAP,X
+    inx
+    sta     MAP,X
+    inx     
+    sta     MAP,X
+    inx     
+    sta     MAP,X
+    txa
+    sec
+    sbc     #89
+    tax
+    tya
+    rts
+
+
+
+
+
+
 /*
 ;   END OF CODE, START OF DATA
 */
 
 
 ; MAP 1 ENCODING:
-map1          
-    HEX 00 d1 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 
-    HEX 86 a1 e1 00 53 61 00 51 61 00 52 61 e1 00 83 a1 
-    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 b1 
-    HEX c3 e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 ;   Bytes: 64
+map1           ;   Total map size: 425 Bytes
+    HEX 00 06 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 
+    HEX 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21 
+    HEX d2 e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 21 
+    HEX e1 00 21 e1 00 21 e1 00 21 e1 00 21 e1 00 06 e1 ;   Bytes: 64
 
-    HEX a1 e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 
-    HEX 03 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 
-    HEX 46 00 41 e1 00 23 41 e1 00 23 41 e1 00 46 66 00 
-    HEX 61 a1 e1 00 43 61 a1 e1 00 43 61 a1 e1 00 61 a1 ;   Bytes: 128
-
-    HEX e1 00 86 a6 c6 e1 00 e1 00 c3 e1 00 c3 e1 00 c3 
-    HEX e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 a1 
-    HEX e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 e1 
-    HEX 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 e1 ;   Bytes: 192
-
-    HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 00 
-    HEX 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 e1 
-    HEX 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 46 
-    HEX 66 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 ;   Bytes: 256
-
+    HEX 00 06 e1 00 06 e1 00 06 d2 e1 00 06 e1 00 06 e1 
     HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
     HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 ;   Bytes: 320
+    HEX e1 00 06 e1 00 e1 00 a6 c6 e1 00 91 a1 e1 00 83 ;   Bytes: 128
 
-    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 
-    HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
+    HEX a1 e1 00 66 86 a1 e1 00 61 00 53 61 00 61 e1 00 
+    HEX 00 00 00 83 a1 e1 00 83 a1 e1 00 e1 00 e1 00 e1 
+    HEX 00 c3 e1 00 b1 c3 e1 00 e1 00 e1 00 e1 00 a6 c6 
+    HEX e1 00 a1 e1 00 a1 e1 00 a1 e1 00 26 46 66 86 a1 ;   Bytes: 192
+
+    HEX e1 00 21 e1 00 03 21 e1 00 21 e1 00 03 21 e1 00 
+    HEX 03 21 e1 00 26 46 00 41 e1 00 23 41 e1 00 23 41 
+    HEX e1 00 46 66 00 61 a1 e1 00 43 61 a1 e1 00 43 61 
+    HEX a1 e1 00 61 a1 e1 00 86 a6 c6 e1 00 e1 00 c3 e1 ;   Bytes: 256
+
+    HEX 00 c3 e1 00 c3 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 
+    HEX e1 00 66 86 a1 e1 00 61 00 61 00 61 e1 00 83 a1 
+    HEX e1 00 83 a1 e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 
+    HEX e1 00 e1 00 e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 ;   Bytes: 320
+
+    HEX e1 00 a1 e1 00 26 46 66 86 a1 e1 00 21 e1 00 03 
+    HEX 21 e1 00 21 e1 00 03 21 e1 00 03 21 e1 00 26 46 
+    HEX 00 41 e1 00 46 66 00 06 e1 00 06 e1 00 06 e1 00 
     HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 ;   Bytes: 384
 
     HEX e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 
-    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
-                                                        ;   Total map size: 412 Bytes
-;     HEX 00 e1 00 a6 c6 e1 00 a1 e1 00 83 a1 e1 00 66 86 
-;     HEX a1 e1 00 61 00 61 00 61 e1 00 83 a1 e1 00 83 a1 
-;     HEX e1 00 e1 00 e1 00 e1 00 c3 e1 00 c3 e1 00 e1 00 
-;     HEX e1 00 e1 00 a6 c6 e1 00 a1 e1 00 a1 e1 00 a1 e1 
-;     HEX 00 26 46 66 86 a1 e1 00 21 e1 00 03 21 e1 00 21 
-;     HEX e1 00 03 21 e1 00 03 21 e1 00 26 46 00 41 e1 00 
-;     HEX 23 41 e1 00 23 41 e1 00 46 66 00 61 e1 00 43 61 
-;     HEX e1 00 43 61 e1 00 61 e1 00 86 a6 c6 e1 00 e1 00 
-;     HEX c3 e1 00 c3 e1 00 c3 e1 FF
-
+    HEX 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 00 
+    HEX 06 e1 00 06 e1 00 06 e1 00 06 e1 00 06 e1 FF
+                                                    ;   Total map size: 430 Bytes
 
     ; map array. in case we want to have something there at game start,
     ; put that here (probably will not use, because then we cannot replay the game)
