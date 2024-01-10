@@ -1,6 +1,6 @@
 # 599.82 Retro Game
-
 Developed by Archer (Zi Xing) Wei, Bernardo Klein, Taras Leshchenko
+
 Instructions: 
 cd into the main_game folder, and type make to compile the game. 
 
